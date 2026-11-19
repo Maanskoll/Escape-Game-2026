@@ -1,0 +1,2583 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#05070c">
+  <title>Signal entrant — Kénan</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #05070c;
+      --cyan: #79f7ff;
+      --blue: #428bff;
+      --muted: #91a2b3;
+      --line: rgba(121, 247, 255, .18);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: var(--ink);
+      color: #eefaff;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .scene {
+      position: relative;
+      display: grid;
+      min-height: 100svh;
+      place-items: center;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(ellipse at 50% 48%, rgba(12, 49, 73, .3), transparent 48%),
+        linear-gradient(180deg, #080b12 0%, #05070c 70%);
+    }
+
+    .scene::before {
+      position: absolute;
+      z-index: -1;
+      inset: -50%;
+      background-image:
+        linear-gradient(rgba(67, 151, 180, .075) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(67, 151, 180, .075) 1px, transparent 1px);
+      background-size: 58px 58px;
+      content: "";
+      transform: perspective(520px) rotateX(62deg) translateY(28%);
+      transform-origin: center bottom;
+      mask-image: linear-gradient(transparent 8%, #000 48%, #000 75%, transparent 100%);
+      animation: grid-drift 18s linear infinite;
+    }
+
+    .scene::after {
+      position: absolute;
+      z-index: -1;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 24%, rgba(0, 0, 0, .72) 100%);
+      content: "";
+      pointer-events: none;
+    }
+
+    .scanlines {
+      position: absolute;
+      z-index: 4;
+      inset: 0;
+      opacity: .14;
+      background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(140, 230, 255, .07) 4px);
+      pointer-events: none;
+    }
+
+    .orb {
+      position: absolute;
+      width: min(72vw, 680px);
+      aspect-ratio: 1;
+      border: 1px solid rgba(89, 222, 255, .18);
+      border-radius: 50%;
+      box-shadow: 0 0 80px rgba(0, 160, 255, .07), inset 0 0 90px rgba(0, 160, 255, .05);
+      animation: orb-breathe 6s ease-in-out infinite;
+    }
+
+    .orb::before, .orb::after {
+      position: absolute;
+      inset: 9%;
+      border: 1px solid rgba(89, 222, 255, .12);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .orb::after {
+      inset: 19%;
+      border-color: rgba(89, 222, 255, .08);
+    }
+
+    .topline, .coordinates {
+      position: absolute;
+      z-index: 2;
+      color: var(--muted);
+      font: 10px/1.6 "Consolas", "Courier New", monospace;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    .topline { top: 34px; left: 38px; }
+    .coordinates { right: 38px; bottom: 32px; text-align: right; }
+    .topline span { color: var(--cyan); }
+
+    .status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      margin-right: 9px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 12px var(--cyan);
+      animation: blink 1.6s ease-in-out infinite;
+    }
+
+    .auth-screen, .intro, .welcome {
+      position: absolute;
+      z-index: 3;
+      width: min(90vw, 900px);
+      text-align: center;
+      transition: opacity 1s ease, transform 1s ease, filter 1s ease;
+    }
+
+    .auth-screen {
+      width: min(90vw, 520px);
+      padding: 38px 34px;
+      border: 1px solid var(--line);
+      background: rgba(5, 12, 20, .76);
+      box-shadow: 0 0 55px rgba(0, 160, 255, .08), inset 0 0 35px rgba(0, 160, 255, .035);
+      backdrop-filter: blur(8px);
+    }
+
+    .auth-screen[hidden] { display: none; }
+    .auth-screen.leaving { opacity: 0; filter: blur(10px); transform: scale(1.025); }
+    .auth-screen .eyebrow { margin-bottom: 18px; }
+
+    .auth-screen h1 {
+      margin: 0;
+      font-size: clamp(32px, 6vw, 54px);
+      font-weight: 300;
+      letter-spacing: -.045em;
+      text-shadow: 0 0 26px rgba(121, 247, 255, .25);
+    }
+
+    .auth-copy {
+      margin: 15px 0 28px;
+      color: #a7b9c9;
+      font-size: 14px;
+      letter-spacing: .04em;
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .auth-form label {
+      color: var(--cyan);
+      font: 10px "Consolas", "Courier New", monospace;
+      letter-spacing: .17em;
+      text-transform: uppercase;
+    }
+
+    .auth-form input {
+      width: 100%;
+      min-height: 52px;
+      padding: 0 15px;
+      border: 1px solid rgba(121, 247, 255, .42);
+      border-radius: 0;
+      color: #eefaff;
+      background: rgba(2, 8, 14, .8);
+      font: 16px "Consolas", "Courier New", monospace;
+      letter-spacing: .08em;
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .auth-form input::placeholder { color: #617382; }
+    .auth-form input:focus { border-color: var(--cyan); box-shadow: 0 0 16px rgba(121, 247, 255, .18); }
+    .auth-form input[aria-invalid="true"] { border-color: #ff6b85; }
+
+    .auth-submit {
+      min-height: 50px;
+      margin-top: 5px;
+      border: 1px solid rgba(121, 247, 255, .72);
+      color: #eafcff;
+      background: rgba(9, 25, 36, .55);
+      font: 11px "Consolas", "Courier New", monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .2s ease, box-shadow .2s ease, color .2s ease;
+    }
+
+    .auth-submit:hover, .auth-submit:focus-visible {
+      color: #041014;
+      background: var(--cyan);
+      box-shadow: 0 0 28px rgba(121, 247, 255, .4);
+    }
+
+    .auth-submit:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 5px;
+    }
+
+    .auth-message {
+      min-height: 18px;
+      margin: 2px 0 0;
+      color: #ff8296;
+      font: 11px/1.6 "Consolas", "Courier New", monospace;
+      letter-spacing: .04em;
+    }
+
+    .auth-message.success { color: var(--cyan); }
+
+    .auth-form.error { animation: auth-shake .28s ease-in-out; }
+
+    .intro {
+      opacity: 0;
+      filter: blur(12px);
+      transform: translateY(12px);
+      pointer-events: none;
+    }
+
+    .intro.visible { opacity: 1; filter: blur(0); transform: translateY(0); }
+    .intro.leaving { opacity: 0; filter: blur(10px); transform: scale(1.035); }
+
+    .eyebrow {
+      margin: 0 0 22px;
+      color: var(--cyan);
+      font: 11px/1.5 "Consolas", "Courier New", monospace;
+      letter-spacing: .34em;
+      text-transform: uppercase;
+    }
+
+    .intro h1 {
+      margin: 0;
+      font-size: clamp(48px, 10vw, 112px);
+      font-weight: 300;
+      letter-spacing: -.065em;
+      text-shadow: 0 0 34px rgba(121, 247, 255, .42);
+    }
+
+    .intro h1 span { color: var(--cyan); font-weight: 500; }
+
+    .welcome {
+      visibility: hidden;
+      opacity: 0;
+      filter: blur(8px);
+      transform: translateY(18px);
+    }
+
+    .welcome.visible {
+      visibility: visible;
+      opacity: 1;
+      filter: blur(0);
+      transform: translateY(0);
+    }
+
+    .welcome .eyebrow { margin-bottom: 16px; }
+
+    .welcome h2 {
+      margin: 0;
+      font-size: clamp(34px, 6vw, 68px);
+      font-weight: 300;
+      letter-spacing: -.045em;
+      text-shadow: 0 0 28px rgba(121, 247, 255, .28);
+    }
+
+    .welcome h2 span { color: var(--cyan); }
+
+    .welcome-copy {
+      margin: 20px auto 34px;
+      color: #a7b9c9;
+      font-size: 14px;
+      letter-spacing: .04em;
+    }
+
+    .desktop[hidden], .app-window[hidden], .app-panel[hidden] { display: none; }
+
+    .desktop {
+      position: absolute;
+      z-index: 3;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 70% 40%, rgba(12, 49, 73, .24), transparent 50%),
+        linear-gradient(145deg, rgba(5, 10, 17, .98), rgba(4, 8, 14, .96));
+    }
+
+    .desktop::before {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(67, 151, 180, .055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(67, 151, 180, .055) 1px, transparent 1px);
+      background-size: 42px 42px;
+      content: "";
+      pointer-events: none;
+    }
+
+    .desktop-topbar, .taskbar {
+      position: absolute;
+      z-index: 2;
+      right: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-color: var(--line);
+      background: rgba(3, 8, 14, .84);
+      color: #b6c8d6;
+      font: 10px "Consolas", "Courier New", monospace;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      backdrop-filter: blur(12px);
+    }
+
+    .desktop-topbar {
+      top: 0;
+      min-height: 42px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .desktop-brand { color: var(--cyan); }
+    .desktop-topbar-right { display: flex; align-items: center; gap: 20px; }
+    .online-status { color: #8dffcb; }
+    .online-status::before {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: #8dffcb;
+      box-shadow: 0 0 10px #8dffcb;
+      content: "";
+    }
+
+    .desktop-icons {
+      position: absolute;
+      z-index: 1;
+      top: 70px;
+      left: 24px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .desktop-icon {
+      display: grid;
+      width: 92px;
+      min-height: 86px;
+      justify-items: center;
+      align-content: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      color: #d7e8f4;
+      background: transparent;
+      font: 10px "Consolas", "Courier New", monospace;
+      letter-spacing: .03em;
+      cursor: pointer;
+    }
+
+    .desktop-icon:hover, .desktop-icon:focus-visible {
+      border-color: rgba(121, 247, 255, .32);
+      background: rgba(25, 72, 90, .28);
+      outline: none;
+    }
+
+    .icon-glyph {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid rgba(121, 247, 255, .38);
+      color: var(--cyan);
+      background: rgba(12, 42, 57, .55);
+      font-size: 20px;
+      box-shadow: 0 0 18px rgba(0, 160, 255, .08);
+    }
+
+    .icon-label { position: relative; }
+
+    .icon-badge {
+      position: absolute;
+      top: -4px;
+      right: -12px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ff6684;
+      box-shadow: 0 0 8px #ff6684;
+    }
+
+    .app-window {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      left: 50%;
+      display: flex;
+      width: min(760px, calc(100% - 190px));
+      height: min(490px, calc(100% - 130px));
+      min-height: 300px;
+      flex-direction: column;
+      border: 1px solid rgba(121, 247, 255, .45);
+      background: rgba(5, 12, 20, .96);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .48), 0 0 35px rgba(0, 160, 255, .08);
+      transform: translate(-43%, -50%);
+      animation: window-appear .24s ease-out;
+    }
+
+    .window-titlebar {
+      display: flex;
+      min-height: 46px;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(9, 25, 36, .72);
+    }
+
+    .window-title {
+      color: var(--cyan);
+      font: 10px "Consolas", "Courier New", monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .window-close {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border: 1px solid transparent;
+      color: #afc0cc;
+      background: transparent;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .window-close:hover, .window-close:focus-visible {
+      border-color: rgba(255, 107, 133, .65);
+      color: #ff8296;
+      outline: none;
+    }
+
+    .window-content { min-height: 0; flex: 1; overflow: auto; }
+
+    .mail-layout {
+      display: grid;
+      height: 100%;
+      min-height: 0;
+      grid-template-columns: minmax(170px, 30%) 1fr;
+    }
+
+    .inbox-list {
+      padding: 18px 12px;
+      border-right: 1px solid var(--line);
+      background: rgba(3, 9, 15, .55);
+    }
+
+    .app-section-label {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font: 9px "Consolas", "Courier New", monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .mail-item {
+      width: 100%;
+      padding: 12px 10px;
+      border: 1px solid rgba(121, 247, 255, .3);
+      color: #e8f4fb;
+      background: rgba(13, 43, 58, .38);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .mail-item:hover, .mail-item:focus-visible {
+      border-color: var(--cyan);
+      outline: none;
+      background: rgba(13, 58, 76, .52);
+    }
+
+    .mail-item[aria-pressed="true"] { border-color: var(--cyan); }
+    .mail-item[hidden] { display: none; }
+
+    .mail-sender, .mail-subject, .mail-time { display: block; }
+    .mail-sender { color: var(--cyan); font-size: 11px; }
+    .mail-subject { margin-top: 7px; font-size: 11px; }
+    .mail-time {
+      margin-top: 8px;
+      color: var(--muted);
+      font: 9px "Consolas", "Courier New", monospace;
+    }
+
+    .mail-item-unread {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-left: 6px;
+      border-radius: 50%;
+      background: #ff6684;
+      box-shadow: 0 0 8px #ff6684;
+      vertical-align: middle;
+    }
+    .mail-item-unread[hidden] { display: none; }
+
+    .mail-meta { white-space: pre-line; }
+
+    .mail-reading { padding: clamp(20px, 4vw, 36px); }
+    .mail-meta {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font: 9px/1.6 "Consolas", "Courier New", monospace;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .mail-reading h2 {
+      margin: 0 0 24px;
+      color: #f0fbff;
+      font-size: clamp(20px, 3vw, 28px);
+      font-weight: 400;
+      letter-spacing: -.025em;
+    }
+
+    .mail-body {
+      max-width: 430px;
+      color: #bfd0dc;
+      font-size: 14px;
+      line-height: 1.8;
+      white-space: pre-line;
+    }
+
+    .mail-signature { margin-top: 24px; color: var(--cyan); font: 10px "Consolas", "Courier New", monospace; }
+    .partner-actions { max-width: 460px; margin-top: 22px; }
+    .partner-choices { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
+    .partner-choices[hidden] { display: none; }
+    .partner-choice { min-height: 40px; padding: 0 14px; }
+    .partner-choice:disabled { opacity: .55; cursor: not-allowed; }
+    .partner-choice-status { min-height: 18px; margin-top: 12px; color: #ff8296; font: 10px/1.6 "Consolas", "Courier New", monospace; }
+    .partner-date-form { max-width: 320px; margin-top: 16px; }
+    .partner-date-form label { display: block; margin-bottom: 8px; color: var(--muted); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .partner-date-input { display: block; width: 100%; min-height: 42px; margin-bottom: 12px; padding: 0 10px; border: 1px solid rgba(121, 247, 255, .36); color: #eefaff; background: rgba(2, 8, 14, .8); font: 12px "Consolas", "Courier New", monospace; }
+    .partner-date-input:focus-visible { border-color: var(--cyan); outline: 1px solid var(--cyan); }
+    .partner-date-note { margin: 0 0 12px; color: var(--muted); font: 9px/1.6 "Consolas", "Courier New", monospace; }
+    .partner-response-status { margin-top: 14px; color: var(--cyan); font: 10px/1.6 "Consolas", "Courier New", monospace; }
+    .partner-date-memory-note { max-width: 360px; margin: 12px 0 0; padding: 10px 12px; border-left: 2px solid var(--cyan); color: #e3f7fa; background: rgba(13, 58, 76, .35); font-size: 12px; line-height: 1.6; }
+    .partner-date-memory-note[hidden] { display: none; }
+    .partner-edit-date { margin-top: 12px; }
+    .lea-conversation[hidden] { display: none; }
+    .lea-conversation { max-width: 520px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .lea-conversation h3 { margin: 0 0 8px; color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .lea-chat-log { display: grid; gap: 9px; margin: 14px 0; padding: 0; list-style: none; }
+    .lea-chat-message { max-width: 92%; padding: 10px 12px; border-left: 2px solid rgba(121, 247, 255, .6); color: #dcecf4; background: rgba(9, 25, 36, .72); }
+    .lea-chat-message.lea-reply { justify-self: end; border-right: 2px solid rgba(121, 247, 255, .4); border-left: 0; background: rgba(13, 43, 58, .48); }
+    .lea-chat-message[hidden] { display: none; }
+    .lea-chat-message strong { display: block; margin-bottom: 6px; color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; }
+    .lea-chat-message p { margin: 0; color: #dcecf4; font-size: 11px; line-height: 1.7; }
+    .lea-chat-status { min-height: 18px; color: var(--muted); font: 9px/1.6 "Consolas", "Courier New", monospace; }
+    .mail-attachment[hidden], .file-entry[hidden], #fileList[hidden], #incidentPuzzle[hidden],
+    #incidentReport[hidden], #fragmentReport[hidden] { display: none; }
+    .mail-attachment {
+      display: block;
+      margin-top: 22px;
+      padding: 11px 13px;
+      border: 1px solid rgba(121, 247, 255, .36);
+      color: var(--cyan);
+      background: rgba(9, 25, 36, .55);
+      font: 10px "Consolas", "Courier New", monospace;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .mail-attachment:hover, .mail-attachment:focus-visible {
+      border-color: var(--cyan);
+      outline: none;
+      background: rgba(13, 58, 76, .52);
+    }
+
+    .simple-panel { padding: clamp(22px, 4vw, 36px); }
+    .simple-panel h2 {
+      margin: 0 0 10px;
+      color: #eefaff;
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 300;
+    }
+
+    .panel-copy { max-width: 460px; color: #a7b9c9; font-size: 13px; line-height: 1.8; }
+    .search-panel { overflow-y: auto; }
+    .search-form { max-width: 600px; margin-top: 24px; }
+    .search-form label {
+      display: block;
+      margin-bottom: 9px;
+      color: var(--muted);
+      font: 9px "Consolas", "Courier New", monospace;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .search-controls { display: flex; gap: 8px; }
+    .search-input {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid rgba(121, 247, 255, .36);
+      border-radius: 0;
+      color: #eefaff;
+      background: rgba(2, 8, 14, .8);
+      font: 12px "Consolas", "Courier New", monospace;
+    }
+
+    .search-input:focus-visible { border-color: var(--cyan); outline: 1px solid var(--cyan); }
+    .search-submit, .dossier-back {
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid rgba(121, 247, 255, .55);
+      color: var(--cyan);
+      background: rgba(9, 25, 36, .65);
+      font: 9px "Consolas", "Courier New", monospace;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .search-submit:hover, .search-submit:focus-visible,
+    .dossier-back:hover, .dossier-back:focus-visible {
+      color: #041014;
+      background: var(--cyan);
+      outline: none;
+    }
+
+    .search-feedback { min-height: 16px; color: var(--muted); font: 10px/1.6 "Consolas", "Courier New", monospace; }
+    .search-results[hidden], .company-dossier[hidden], .company-interview[hidden], .founder-profile[hidden],
+    .missing-persons-report[hidden], .subject84-profile[hidden], .clinical-followup[hidden],
+    .search-result[hidden] { display: none; }
+    .search-results { max-width: 600px; margin-top: 20px; }
+    .search-result {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      border: 1px solid var(--line);
+      color: #dcecf4;
+      background: rgba(9, 25, 36, .48);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .search-result:hover, .search-result:focus-visible {
+      border-color: var(--cyan);
+      outline: none;
+      background: rgba(13, 58, 76, .52);
+    }
+
+    .search-result strong, .search-result span { display: block; }
+    .search-result strong { color: var(--cyan); font-size: 14px; font-weight: 400; }
+    .search-result span { margin-top: 7px; color: #a7b9c9; font-size: 11px; line-height: 1.6; }
+    .company-dossier, .company-interview, .founder-profile, .missing-persons-report,
+    .subject84-profile, .clinical-followup { max-width: 650px; }
+    .dossier-back { min-height: 34px; margin-bottom: 18px; padding: 0 11px; }
+    .dossier-kicker { color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .16em; }
+    .company-dossier h3, .company-interview h3 { margin: 8px 0; color: #eefaff; font-size: clamp(24px, 4vw, 36px); font-weight: 300; }
+    .dossier-summary { max-width: 560px; color: #a7b9c9; font-size: 12px; line-height: 1.8; }
+    .dossier-facts { margin: 20px 0 0; border-top: 1px solid var(--line); }
+    .dossier-facts div { display: grid; grid-template-columns: minmax(100px, 150px) 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .dossier-facts dt { color: var(--muted); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .dossier-facts dd { margin: 0; color: #dcecf4; font-size: 11px; line-height: 1.6; }
+    .dossier-footnote { margin-top: 16px; padding: 11px 13px; border-left: 2px solid var(--cyan); color: #a7b9c9; background: rgba(9, 25, 36, .45); font-size: 11px; line-height: 1.6; }
+    .interview-question { margin: 22px 0 8px; color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .interview-quote { margin: 10px 0; padding: 14px 18px; border-left: 2px solid var(--cyan); color: #dcecf4; background: rgba(9, 25, 36, .45); font-size: 12px; line-height: 1.8; }
+    .interview-attribution { color: var(--muted); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .08em; }
+    .founder-profile h3, .subject84-profile h3 { margin: 8px 0; color: #eefaff; font-size: clamp(24px, 4vw, 36px); font-weight: 300; }
+    .clinical-followup h3 { margin: 8px 0; color: #eefaff; font-size: clamp(24px, 4vw, 36px); font-weight: 300; }
+    .clinical-timeline { display: grid; gap: 0; margin: 20px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+    .clinical-timeline li { display: grid; grid-template-columns: minmax(112px, 145px) 1fr; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+    .clinical-timeline time { color: var(--cyan); font: 9px/1.7 "Consolas", "Courier New", monospace; }
+    .clinical-timeline strong { color: #dcecf4; font-size: 11px; font-weight: 500; }
+    .clinical-timeline p { margin: 5px 0 0; color: #a7b9c9; font-size: 11px; line-height: 1.7; }
+    .clinical-timeline .clinical-alert strong { color: #ff9aab; }
+    .founder-timeline { display: grid; gap: 0; margin: 20px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+    .founder-timeline li { display: grid; grid-template-columns: minmax(100px, 125px) 1fr; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+    .founder-timeline time { color: var(--cyan); font: 9px/1.7 "Consolas", "Courier New", monospace; }
+    .founder-timeline strong { color: #dcecf4; font-size: 11px; font-weight: 500; }
+    .founder-timeline p { margin: 5px 0 0; color: #a7b9c9; font-size: 11px; line-height: 1.7; }
+    .founder-timeline .timeline-gap { color: #e8c98a; }
+    .missing-persons-report h3 { margin: 8px 0; color: #eefaff; font-size: clamp(24px, 4vw, 36px); font-weight: 300; }
+    .report-section { margin-top: 20px; }
+    .report-section h4 { margin: 0 0 8px; color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .report-section p { margin: 0; color: #c1d0da; font-size: 11px; line-height: 1.8; }
+    .report-statement { margin: 0; padding: 14px 18px; border-left: 2px solid rgba(255, 130, 150, .72); color: #dcecf4; background: rgba(36, 16, 25, .48); font-size: 11px; line-height: 1.8; }
+
+    .file-entry {
+      display: flex;
+      max-width: 480px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 22px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      background: rgba(9, 25, 36, .45);
+      font: 11px "Consolas", "Courier New", monospace;
+    }
+
+    .file-entry-button { width: 100%; text-align: left; cursor: pointer; }
+    .file-entry-button:hover, .file-entry-button:focus-visible { border-color: var(--cyan); outline: none; background: rgba(13, 58, 76, .52); }
+    .file-entry span:last-child { color: var(--muted); font-size: 9px; }
+    .incident-puzzle { max-width: 620px; }
+    .incident-puzzle h3 { margin: 8px 0; color: #eefaff; font-size: clamp(22px, 4vw, 32px); font-weight: 300; }
+    .puzzle-instructions { color: #a7b9c9; font-size: 12px; line-height: 1.8; }
+    .puzzle-controls { display: grid; gap: 18px; max-width: 520px; margin: 22px 0; }
+    .puzzle-control label { display: flex; justify-content: space-between; gap: 12px; color: #dcecf4; font: 10px "Consolas", "Courier New", monospace; }
+    .puzzle-control output { color: var(--cyan); font-variant-numeric: tabular-nums; }
+    .puzzle-control input { display: block; width: 100%; margin-top: 9px; accent-color: var(--cyan); cursor: pointer; }
+    .puzzle-control input:focus-visible { outline: 1px solid var(--cyan); outline-offset: 4px; }
+    .puzzle-submit { min-height: 42px; padding: 0 16px; border: 1px solid rgba(121, 247, 255, .55); color: var(--cyan); background: rgba(9, 25, 36, .65); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+    .puzzle-submit:hover, .puzzle-submit:focus-visible { color: #041014; background: var(--cyan); outline: none; }
+    .puzzle-feedback { min-height: 18px; margin-top: 12px; color: #ff8296; font: 10px/1.6 "Consolas", "Courier New", monospace; }
+    .puzzle-feedback.success { color: var(--cyan); }
+    .incident-report { max-width: 620px; }
+    .incident-report h3 { margin: 8px 0; color: #eefaff; font-size: clamp(22px, 4vw, 32px); font-weight: 300; }
+    .incident-summary { color: #dcecf4; font-size: 12px; line-height: 1.8; }
+    .incident-report .dossier-footnote { border-left-color: #ff8296; }
+    .node7-console { max-width: 520px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .node7-console h3, .fragment-report h3 { margin: 8px 0; color: #eefaff; font-size: clamp(20px, 3vw, 28px); font-weight: 300; }
+    .node7-form { max-width: 420px; margin-top: 18px; }
+    .node7-form label { display: block; margin-bottom: 8px; color: var(--muted); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .node7-input { width: 100%; min-height: 42px; margin-bottom: 12px; padding: 0 12px; border: 1px solid rgba(121, 247, 255, .36); color: #eefaff; background: rgba(2, 8, 14, .8); font: 12px "Consolas", "Courier New", monospace; }
+    .node7-input:focus-visible { border-color: var(--cyan); outline: 1px solid var(--cyan); }
+    .node7-feedback { min-height: 18px; color: #ff8296; font: 10px/1.6 "Consolas", "Courier New", monospace; }
+    .node7-feedback.success { color: var(--cyan); }
+    .node7-exchange { margin: 18px 0; padding: 14px; border: 1px solid var(--line); background: rgba(2, 8, 14, .58); }
+    .node7-exchange h4 { margin: 0 0 8px; color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .exchange-meta { color: var(--muted); font: 9px/1.6 "Consolas", "Courier New", monospace; }
+    .exchange-messages { display: grid; gap: 9px; margin: 14px 0; padding: 0; list-style: none; }
+    .exchange-message { max-width: 90%; padding: 10px 12px; border-left: 2px solid rgba(121, 247, 255, .6); color: #dcecf4; background: rgba(9, 25, 36, .72); }
+    .exchange-message.authority { justify-self: end; border-right: 2px solid rgba(255, 130, 150, .65); border-left: 0; background: rgba(36, 16, 25, .48); }
+    .exchange-speaker { display: flex; justify-content: space-between; gap: 16px; margin: 0 0 6px; color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; }
+    .exchange-message.authority .exchange-speaker { color: #ff9aab; }
+    .exchange-message time { color: var(--muted); }
+    .exchange-message p:last-child { margin: 0; font-size: 11px; line-height: 1.7; }
+    .exchange-typing, .exchange-end { min-height: 18px; color: var(--muted); font: 9px/1.6 "Consolas", "Courier New", monospace; }
+    .fragment-report { max-width: 620px; }
+    .fragment-log { margin: 18px 0; padding: 16px; border: 1px solid var(--line); color: #bcecf0; background: rgba(2, 8, 14, .72); font: 11px/1.9 "Consolas", "Courier New", monospace; white-space: pre-wrap; }
+
+    .notes-area {
+      display: block;
+      width: 100%;
+      max-width: 500px;
+      min-height: 150px;
+      margin-top: 20px;
+      padding: 14px;
+      resize: vertical;
+      border: 1px solid rgba(121, 247, 255, .28);
+      border-radius: 0;
+      color: #dcecf4;
+      background: rgba(2, 8, 14, .72);
+      font: 12px/1.7 "Consolas", "Courier New", monospace;
+    }
+
+    .notes-area:focus-visible { border-color: var(--cyan); outline: 1px solid var(--cyan); }
+    .notes-status { min-height: 16px; color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; }
+
+    .system-grid {
+      display: grid;
+      max-width: 460px;
+      grid-template-columns: 1fr auto;
+      gap: 0;
+      margin-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+
+    .system-grid span {
+      padding: 12px 4px;
+      border-bottom: 1px solid var(--line);
+      color: #a7b9c9;
+      font: 10px "Consolas", "Courier New", monospace;
+    }
+
+    .system-grid span:nth-child(even) { color: var(--cyan); text-align: right; }
+    .system-grid span[hidden] { display: none; }
+
+    .taskbar {
+      bottom: 0;
+      min-height: 48px;
+      padding: 0 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .taskbar-start {
+      padding: 8px 10px;
+      border: 1px solid transparent;
+      color: var(--cyan);
+      background: transparent;
+      font: 10px "Consolas", "Courier New", monospace;
+      letter-spacing: .14em;
+      cursor: pointer;
+    }
+
+    .taskbar-start:hover, .taskbar-start:focus-visible {
+      border-color: var(--line);
+      outline: none;
+      background: rgba(25, 72, 90, .28);
+    }
+
+    .profile-switch {
+      padding: 8px 10px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      background: transparent;
+      font: 10px "Consolas", "Courier New", monospace;
+      letter-spacing: .14em;
+      cursor: pointer;
+    }
+
+    .profile-switch:hover, .profile-switch:focus-visible {
+      border-color: var(--line);
+      color: var(--cyan);
+      outline: none;
+      background: rgba(25, 72, 90, .28);
+    }
+
+    .varenne-frame {
+      position: absolute;
+      z-index: 8;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #090d13;
+    }
+
+    .varenne-frame[hidden] { display: none; }
+
+    .taskbar-label { color: var(--muted); }
+    .taskbar-clock { color: #d7e8f4; font-variant-numeric: tabular-nums; }
+
+    .incoming-mail-notice {
+      position: absolute;
+      z-index: 4;
+      top: 56px;
+      right: 20px;
+      width: min(330px, calc(100% - 40px));
+      padding: 14px 16px;
+      border: 1px solid rgba(121, 247, 255, .55);
+      background: rgba(5, 15, 23, .96);
+      box-shadow: 0 10px 38px rgba(0, 0, 0, .4), 0 0 24px rgba(0, 160, 255, .12);
+      animation: window-appear .24s ease-out;
+    }
+
+    .incoming-mail-notice[hidden] { display: none; }
+    .notice-label { display: block; margin-bottom: 7px; color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .15em; text-transform: uppercase; }
+    .notice-open {
+      width: 100%;
+      padding: 0;
+      border: 0;
+      color: #e8f4fb;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .notice-open:hover, .notice-open:focus-visible { color: var(--cyan); outline: none; }
+    .notice-dismiss {
+      position: absolute;
+      top: 7px;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .notice-dismiss:hover, .notice-dismiss:focus-visible { color: #fff; outline: 1px solid var(--cyan); }
+
+    @keyframes window-appear {
+      from { opacity: 0; translate: 0 8px; }
+      to { opacity: 1; translate: 0 0; }
+    }
+
+    .enter-button, .replay-button {
+      position: relative;
+      min-height: 52px;
+      border: 1px solid rgba(121, 247, 255, .72);
+      color: #eafcff;
+      background: rgba(9, 25, 36, .55);
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .2s ease, box-shadow .2s ease, color .2s ease;
+    }
+
+    .enter-button {
+      padding: 0 27px;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+
+    .enter-button:hover, .enter-button:focus-visible {
+      color: #041014;
+      background: var(--cyan);
+      box-shadow: 0 0 28px rgba(121, 247, 255, .4);
+    }
+
+    .enter-button:focus-visible, .replay-button:focus-visible, .skip-button:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 5px;
+    }
+
+    .replay-button {
+      position: fixed;
+      z-index: 5;
+      right: 30px;
+      top: 26px;
+      min-height: 36px;
+      padding: 0 13px;
+      border-color: var(--line);
+      color: var(--muted);
+      background: rgba(5, 7, 12, .5);
+      font: 10px "Consolas", "Courier New", monospace;
+      letter-spacing: .12em;
+    }
+
+    .replay-button:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    .skip-button {
+      position: fixed;
+      z-index: 5;
+      right: 38px;
+      bottom: 38px;
+      padding: 8px 0;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font: 10px "Consolas", "Courier New", monospace;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .skip-button:hover { color: var(--cyan); }
+    .skip-button[hidden], .replay-button[hidden] { display: none; }
+
+    .corner {
+      position: absolute;
+      z-index: 2;
+      width: 24px;
+      height: 24px;
+      border-color: rgba(121, 247, 255, .48);
+      border-style: solid;
+    }
+
+    .corner-one { top: 26px; left: 26px; border-width: 1px 0 0 1px; }
+    .corner-two { top: 26px; right: 26px; border-width: 1px 1px 0 0; }
+    .corner-three { bottom: 26px; left: 26px; border-width: 0 0 1px 1px; }
+    .corner-four { right: 26px; bottom: 26px; border-width: 0 1px 1px 0; }
+
+    @keyframes grid-drift {
+      from { background-position: 0 0; }
+      to { background-position: 0 58px; }
+    }
+
+    @keyframes orb-breathe {
+      0%, 100% { transform: scale(.98); opacity: .7; }
+      50% { transform: scale(1.02); opacity: 1; }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .35; }
+    }
+
+    @keyframes auth-shake {
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    @media (max-width: 600px) {
+      .topline { top: 28px; left: 24px; font-size: 9px; }
+      .coordinates { right: 24px; bottom: 23px; font-size: 9px; }
+      .skip-button { right: 24px; bottom: 62px; }
+      .replay-button { top: auto; right: 24px; bottom: 98px; }
+      .orb { width: 112vw; }
+      .welcome-copy { max-width: 290px; line-height: 1.7; }
+      .auth-screen { padding: 32px 22px; }
+      .desktop-topbar { min-height: 38px; padding: 0 13px; font-size: 8px; }
+      .desktop-topbar-right { gap: 8px; }
+      .desktop-icons { top: 56px; left: 8px; gap: 4px; }
+      .desktop-icon { width: 70px; min-height: 72px; font-size: 9px; }
+      .icon-glyph { width: 36px; height: 36px; }
+      .app-window {
+        top: 50%;
+        left: 50%;
+        width: calc(100% - 28px);
+        height: min(450px, calc(100% - 130px));
+        min-height: 280px;
+        transform: translate(-50%, -45%);
+      }
+      .mail-layout { grid-template-columns: 112px 1fr; }
+      .inbox-list { padding: 14px 8px; }
+      .mail-item { padding: 10px 7px; }
+      .mail-reading { padding: 20px 14px; }
+      .mail-body { font-size: 12px; }
+      .taskbar { min-height: 42px; padding: 0 10px; font-size: 8px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
+    }
+    .ending-screen[hidden], .ending-reveal[hidden] { display: none; }
+    .ending-screen {
+      position: fixed;
+      z-index: 20;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: #f0fbff;
+      background: #000;
+      opacity: 0;
+      transition: opacity 1.2s ease;
+    }
+    .ending-screen.visible { opacity: 1; }
+    .ending-content { max-width: 760px; text-align: center; }
+    .ending-status { color: var(--cyan); font: 9px "Consolas", "Courier New", monospace; letter-spacing: .16em; text-transform: uppercase; }
+    .ending-message { margin: 22px 0 0; color: #f0fbff; font-size: clamp(24px, 5vw, 42px); font-weight: 300; }
+    .ending-reveal {
+      margin: 36px 0 0;
+      color: #d7e8f4;
+      font-size: clamp(18px, 3.5vw, 30px);
+      font-weight: 300;
+      line-height: 1.65;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .8s ease, transform .8s ease;
+    }
+    .ending-screen.revealed .ending-reveal { opacity: 1; transform: translateY(0); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ending-screen, .ending-reveal { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="scene" aria-live="polite">
+    <div class="orb" aria-hidden="true"></div>
+    <div class="scanlines" aria-hidden="true"></div>
+    <div class="corner corner-one" aria-hidden="true"></div>
+    <div class="corner corner-two" aria-hidden="true"></div>
+    <div class="corner corner-three" aria-hidden="true"></div>
+    <div class="corner corner-four" aria-hidden="true"></div>
+
+    <div class="topline"><span class="status-dot"></span>Transmission entrante <span>// 01</span></div>
+    <div class="coordinates">Secteur 07 — accès privé<br>Connexion sécurisée</div>
+
+    <section class="auth-screen" id="authScreen" aria-labelledby="authTitle">
+      <p class="eyebrow">Authentification requise // 00</p>
+      <h1 id="authTitle">Veuillez vous identifier</h1>
+      <p class="auth-copy">Cette transmission est réservée à son destinataire.</p>
+      <form class="auth-form" id="authForm">
+        <input id="firstName" name="firstName" type="text" placeholder="Saisir votre identifiant" autocomplete="off" autocapitalize="words" spellcheck="false" required aria-describedby="authMessage">
+        <button class="auth-submit" id="authSubmit" type="submit">Vérifier l'identité <span aria-hidden="true">↗</span></button>
+        <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="intro" id="intro" aria-label="Message d'accueil" aria-hidden="true">
+      <p class="eyebrow">Un signal vous est destiné</p>
+      <h1>Bonjour <span>Kénan</span></h1>
+    </section>
+
+    <section class="welcome" id="welcome" aria-label="Accueil" aria-hidden="true">
+      <p class="eyebrow">Identité confirmée // Kénan</p>
+      <h2>Tu en as pris <span>du temps.</span></h2>
+      <p class="welcome-copy">Le signal est rétabli. À vous de choisir quand commencer.</p>
+      <button class="enter-button" id="enterButton" type="button">Entrer dans l'expérience <span aria-hidden="true">↗</span></button>
+    </section>
+
+    <section class="desktop" id="desktop" aria-label="Bureau de Kénan" aria-hidden="true" hidden>
+      <header class="desktop-topbar">
+        <span class="desktop-brand">NEXUS // BUREAU PERSONNEL</span>
+        <div class="desktop-topbar-right">
+          <span class="online-status">Système en ligne</span>
+          <span>SESSION 07</span>
+        </div>
+      </header>
+
+      <nav class="desktop-icons" aria-label="Applications">
+        <button class="desktop-icon" type="button" data-app="mail" aria-label="Ouvrir la messagerie">
+          <span class="icon-glyph" aria-hidden="true">✉</span>
+          <span class="icon-label">Messagerie<span class="icon-badge" aria-hidden="true"></span></span>
+        </button>
+        <button class="desktop-icon" type="button" data-app="search" aria-label="Ouvrir la recherche interne">
+          <span class="icon-glyph" aria-hidden="true">⌕</span>
+          <span class="icon-label">Recherche</span>
+        </button>
+        <button class="desktop-icon" type="button" data-app="files" aria-label="Ouvrir les fichiers">
+          <span class="icon-glyph" aria-hidden="true">▱</span>
+          <span class="icon-label">Fichiers</span>
+        </button>
+        <button class="desktop-icon" type="button" data-app="notes" aria-label="Ouvrir les notes">
+          <span class="icon-glyph" aria-hidden="true">▤</span>
+          <span class="icon-label">Notes</span>
+        </button>
+        <button class="desktop-icon" type="button" data-app="system" aria-label="Ouvrir l'état du système">
+          <span class="icon-glyph" aria-hidden="true">⌘</span>
+          <span class="icon-label">Système</span>
+        </button>
+      </nav>
+
+      <section class="app-window" id="appWindow" role="region" aria-labelledby="windowTitle" hidden>
+        <header class="window-titlebar">
+          <span class="window-title" id="windowTitle">Messagerie</span>
+          <button class="window-close" id="closeWindow" type="button" aria-label="Fermer la fenêtre">×</button>
+        </header>
+        <div class="window-content">
+          <div class="app-panel mail-layout" id="mailPanel">
+            <aside class="inbox-list" aria-label="Liste des messages">
+              <p class="app-section-label" id="inboxCount">Boîte de réception // 01 message</p>
+              <button class="mail-item" type="button" id="firstMessage" aria-pressed="true">
+                <span class="mail-sender">Source inconnue</span>
+                <span class="mail-subject">Tu es enfin connecté.</span>
+                <span class="mail-time">À l'instant</span>
+              </button>
+              <button class="mail-item" type="button" id="colleagueMessage" aria-pressed="false" hidden>
+                <span class="mail-sender">Léa Moreau <span class="mail-item-unread" aria-label="Non lu"></span></span>
+                <span class="mail-subject">Urgent — Projet Mnémosyne</span>
+                <span class="mail-time">À l'instant</span>
+              </button>
+              <button class="mail-item" type="button" id="incidentMessage" aria-pressed="false" hidden>
+                <span class="mail-sender">Léa Moreau <span class="mail-item-unread" aria-label="Non lu"></span></span>
+                <span class="mail-subject">Incident 404 — j'ai trouvé le rapport</span>
+                <span class="mail-time">À l'instant</span>
+              </button>
+              <button class="mail-item" type="button" id="partnerMessage" aria-pressed="false" hidden>
+                <span class="mail-sender">Ma compagne <span class="mail-item-unread" aria-label="Non lu"></span></span>
+                <span class="mail-subject">Tu rentres ce week-end ?</span>
+                <span class="mail-time">À l'instant</span>
+              </button>
+              <button class="mail-item" type="button" id="leaChannelMessage" aria-pressed="false" hidden>
+                <span class="mail-sender">Canal privé // Léa Moreau <span class="mail-item-unread" aria-label="Non lu"></span></span>
+                <span class="mail-subject">Échange sécurisé disponible</span>
+                <span class="mail-time">À l'instant</span>
+              </button>
+            </aside>
+            <article class="mail-reading" aria-labelledby="mailSubject">
+              <p class="mail-meta" id="mailMeta">De : Source inconnue
+À : Kénan // Transmission privée</p>
+              <h2 id="mailSubject">Tu es enfin connecté.</h2>
+              <p class="mail-body" id="mailBody">Si tu lis ce message, c'est que le canal est rétabli.
+
+Quelqu'un a laissé une trace dans ce système. Regarde autour de toi. Rien n'est ici par hasard.</p>
+              <button class="mail-attachment" id="mailAttachment" type="button" hidden>Ouvrir la pièce jointe — INCIDENT_404.txt</button>
+              <div class="partner-actions" id="partnerActions" hidden>
+                <div class="partner-choices" id="partnerChoices">
+                  <button class="puzzle-submit partner-choice" id="partnerYes" type="button">Oui, je serai là</button>
+                  <button class="puzzle-submit partner-choice" id="partnerNo" type="button">Non</button>
+                </div>
+                <p class="partner-choice-status" id="partnerNoFeedback" role="status" aria-live="polite" hidden></p>
+                <form class="partner-date-form" id="partnerDateForm" hidden>
+                  <label for="partnerDinnerDate">Choisis une date pour le dîner</label>
+                  <p class="partner-date-note">Choisis la date qui te convient.</p>
+                  <input class="partner-date-input" id="partnerDinnerDate" name="dinnerDate" type="date" required>
+                  <button class="puzzle-submit" type="submit">Envoyer ma réponse</button>
+                </form>
+                <p class="partner-response-status" id="partnerResponseStatus" role="status" aria-live="polite" hidden></p>
+                <button class="puzzle-submit partner-edit-date" id="partnerEditDate" type="button" hidden>Modifier la date</button>
+                <p class="partner-date-memory-note" id="partnerDateMemoryNote" role="status" aria-live="polite" hidden>tu veux sortir avec moi ?:)</p>
+              </div>
+              <section class="lea-conversation" id="leaConversation" aria-labelledby="leaConversationTitle" hidden>
+                <h3 id="leaConversationTitle">Canal chiffré // Léa Moreau</h3>
+                <ol class="lea-chat-log" id="leaChatLog" aria-live="polite" aria-label="Conversation avec Léa">
+                  <li class="lea-chat-message" id="leaSubjectMessage" hidden>
+                    <strong>Kénan // message envoyé</strong>
+                    <p>  J'ai pas mal avancé. Je te fais part de ce que j'ai trouvé. J'ai découvert un soi-disant Sujet 84, le type qui a été porté disparu par sa famille. Je suis tombé sur un rapport d'incident qui n'était pas dans le dossier principal. Le rendu public explique que le Sujet 84 a mis fin à son contrat comme tu l'as vu, mais il y a des détails qui ne collent pas. Sa sortie n'est pas confirmée, et le suivi clinique mentionne des symptômes inquiétants juste avant l'incident. Une copie de son archive a été transférée au Nœud 7. </p>
+                  </li>
+                  <li class="lea-chat-message lea-reply" id="leaSubjectReply" hidden>
+                    <strong>Léa // réponse</strong>
+                    <p>Tu as trouvé le dossier… Au  Nœud 7 ?</p>
+                  </li>
+                  <li class="lea-chat-message" id="leaProjectMessage" hidden>
+                    <strong>Kénan // message envoyé</strong>
+                    <p>Oui c'est une espèce d'archive très sécuriée. J'ai pas pu accéder à tout. J'y ai trouvé des traces et plusieurs mentions de Mnémosyne liées au Sujet 84. Le transfert était exceptionnel, et quelqu'un a demandé que la copie reste hors de l'index, donc hors des achives accessibles aux personnels. Tu savais que ce projet allait jusque-là ?</p>
+                  </li>
+                  <li class="lea-chat-message lea-reply" id="leaProjectReply" hidden>
+                    <strong>Léa // réponse</strong>
+                    <p>Non. Mnémosyne n'apparaît dans aucun dossier accessible au personnel. Si ces mentions sont authentiques, c'est qu'ils ont véritablement mis la main sur le projet. Et qu'ils ont réussi avec le Sujet 84. Ce sujet n'était pas un simple essai de conservation. Ne conclus rien à partir d'une capture isolée. Garde une copie de ce que tu as trouvé — et ne parle pas de ça sur un canal ouvert.</p>
+                  </li>
+                  <li class="lea-chat-message" id="leaIntentQuestion" hidden>
+                    <strong>Kénan // message envoyé</strong>
+                    <p>Tu savais vraiment ce que Mnémosyne pouvait faire ? Vespera parle de préserver les souvenirs. Pourtant, le rapport du Sujet 84 décrit l'effacement total de ses souvenirs autobiographiques. Ça va bien au-delà d'une suppression ciblée : on dirait que le protocole peut effacer toute une identité.</p>
+                  </li>
+                  <li class="lea-chat-message lea-reply" id="leaIntentReply" hidden>
+                    <strong>Léa // réponse</strong>
+                    <p>Non. Je connaissais la présentation officielle : archiver, restaurer, protéger. Je n'avais jamais entendu parler d'un effacement total. Une question demeure est-ce que c'était le résultat voulu ou il y a eu une erreur ?</p>
+                  </li>
+                </ol>
+                <p class="lea-chat-status" id="leaTyping" role="status" aria-live="polite" hidden></p>
+                <div class="partner-choices" id="leaActions">
+                  <button class="puzzle-submit partner-choice" id="sendSubjectUpdate" type="button">Envoyer un point sur le Sujet 84</button>
+                  <button class="puzzle-submit partner-choice" id="sendProjectUpdate" type="button" hidden>Répondre sur les traces de Mnémosyne</button>
+                  <button class="puzzle-submit partner-choice" id="sendIntentQuestion" type="button" hidden>Demander ce que Léa savait du protocole</button>
+                </div>
+                <p class="partner-response-status" id="leaConversationEnd" role="status" aria-live="polite" hidden>Canal sécurisé interrompu.</p>
+              </section>
+              <p class="mail-signature" id="mailSignature">— Fin du message</p>
+            </article>
+          </div>
+
+          <section class="app-panel simple-panel" id="filesPanel" aria-labelledby="filesTitle" hidden>
+            <p class="eyebrow" id="fileArchiveKicker">Archives locales // 01</p>
+            <h2 id="filesTitle">Fichiers</h2>
+            <div id="fileList">
+              <p class="panel-copy">Les archives de cette session sont encore en cours de synchronisation.</p>
+              <button class="file-entry file-entry-button" id="transmissionFile" type="button" disabled>
+                <span>transmission_01.dat</span><span id="transmissionFileStatus">ACCÈS RESTREINT</span>
+              </button>
+              <button class="file-entry file-entry-button" id="incidentFile" type="button" hidden>
+                <span>INCIDENT_404.txt</span><span>RAPPORT CHIFFRÉ</span>
+              </button>
+              <button class="file-entry file-entry-button" id="fragmentFile" type="button" hidden>
+                <span>FRAGMENT_M-84.dat</span><span>ARCHIVE PARTIELLE</span>
+              </button>
+            </div>
+            <section class="incident-puzzle" id="incidentPuzzle" aria-labelledby="puzzleTitle" hidden>
+              <button class="dossier-back" id="puzzleBack" type="button">← Retour aux fichiers</button>
+              <p class="dossier-kicker">Restauration // verrou de synchronisation</p>
+              <h3 id="puzzleTitle" tabindex="-1">Rapport chiffré</h3>
+              <p class="puzzle-instructions"> Une fois la séquence restaurée, le rapport sera déverrouillé.</p>
+              <form id="incidentPuzzleForm">
+                <div class="puzzle-controls">
+                  <div class="puzzle-control">
+                    <label for="incidentValue"> Erreur fatal <output id="incidentOutput" for="incidentValue">400</output></label>
+                    <input id="incidentValue" name="incident" type="range" min="400" max="410" step="1" value="400">
+                  </div>
+                  <div class="puzzle-control">
+                    <label for="foundationValue">Mon enfant <output id="foundationOutput" for="foundationValue">2035</output></label>
+                    <input id="foundationValue" name="foundation" type="range" min="2035" max="2045" step="1" value="2035">
+                  </div>
+                  <div class="puzzle-control">
+                    <label for="doctorateValue">La fin marquant mon début <output id="doctorateOutput" for="doctorateValue">2030</output></label>
+                    <input id="doctorateValue" name="doctorate" type="range" min="2030" max="2040" step="1" value="2030">
+                  </div>
+                  <div class="puzzle-control">
+                    <label for="asterValue"> L'achévement de ma réussite <output id="asterOutput" for="asterValue">2040</output></label>
+                    <input id="asterValue" name="aster" type="range" min="2040" max="2050" step="1" value="2040">
+                  </div>
+                </div>
+                <button class="puzzle-submit" type="submit">Restaurer le rapport</button>
+                <p class="puzzle-feedback" id="puzzleFeedback" role="status" aria-live="polite"></p>
+              </form>
+            </section>
+            <article class="incident-report" id="incidentReport" aria-labelledby="incidentTitle" hidden>
+              <button class="dossier-back" id="incidentBack" type="button">← Retour aux fichiers</button>
+              <p class="dossier-kicker">Rapport interne // accès restreint</p>
+              <h3 id="incidentTitle" tabindex="-1">Incident 404 — Protocole Synapse corrompu</h3>
+              <dl class="dossier-facts">
+                <div><dt>Date</dt><dd>16 octobre 2048</dd></div>
+                <div><dt>Protocole</dt><dd>SYNAPSE — phase de synchronisation</dd></div>
+                <div><dt>Sujet</dt><dd>84 — participant volontaire</dd></div>
+                <div><dt>Référence croisée</dt><dd>Index participant — 84</dd></div>
+                <div><dt>Classification</dt><dd>Incident interne — diffusion suspendue</dd></div>
+              </dl>
+              <p class="incident-summary">Lors de la phase de synchronisation, une surtension neuronale a provoqué l'effacement irréversible des banques mémorielles du Sujet 84.</p>
+              <dl class="dossier-facts">
+                <div><dt>Évaluation</dt><dd>Perte totale des souvenirs autobiographiques et des repères identitaires. Restauration déclarée impossible.</dd></div>
+                <div><dt>Notification aux proches</dt><dd>Fin du contrat.</dd></div>
+                <div><dt>Statut de sortie</dt><dd>Non renseigné dans cette copie.</dd></div>
+              </dl>
+              <p class="dossier-footnote">Annotation jointe : « Version interne restreinte »</p>
+            </article>
+            <article class="incident-report fragment-report" id="fragmentReport" aria-labelledby="fragmentTitle" hidden>
+              <button class="dossier-back" id="fragmentBack" type="button">← Retour aux fichiers</button>
+              <p class="dossier-kicker">Récupération partielle // Nœud 7</p>
+              <h3 id="fragmentTitle" tabindex="-1">Fragment M-84</h3>
+              <p class="incident-summary">Le contrôle d'intégrité n'a permis de restaurer qu'un segment de l'archive.</p>
+              <pre class="fragment-log">[02:16:08] RÉPLICATION REÇUE
+SOURCE : MNÉMOSYNE-84
+DESTINATION : NŒUD 7  — unité de stockage isolée. Elle conserve des copies mémorielles transférées hors des archives consultables. L’accès est restreint.
+INTÉGRITÉ : PARTIELLE // 38 %
+ORDRE DE CONSERVATION : EXCEPTIONNEL
+MOTIF : [DONNÉES INDISPONIBLES]
+OPÉRATEUR : [NON IDENTIFIÉ]
+CAPTURE ASSOCIÉE : JOURNAL DE SUPERVISION // PARTIEL
+
+...segment mémoriel illisible...
+...signal interrompu...</pre>
+              <p class="dossier-footnote">Le fragment confirme le transfert d'une copie. Il ne permet pas d'établir où se trouvait le Sujet 84 à cet instant.</p>
+            </article>
+            <article class="incident-report" id="transmissionReport" aria-labelledby="transmissionTitle" hidden>
+              <button class="dossier-back" id="transmissionBack" type="button">← Fermer la transmission</button>
+              <p class="dossier-kicker">Transmission personnelle // copie locale restaurée</p>
+              <h3 id="transmissionTitle" tabindex="-1">Si tu lis ceci, je n'ai pas pu te le dire</h3>
+              <p class="incident-summary">Brouillon de Kénan // novembre 2040 // </p>
+              <p class="incident-summary">Je dois t'expliquer ce que j'ai découvert chez Vespera. Le projet s'appelle Mnémosyne. Officiellement, il devait préserver les souvenirs. En réalité, le protocole peut isoler, modifier, puis effacer les souvenirs autobiographiques d'une personne — jusqu'à lui retirer les repères qui lui permettent de se reconnaître.</p>
+              <p class="incident-summary">Je ne peux pas participer à ça. Ce serait franchir une limite que je ne peux pas accepter, même si on me répète que c'est nécessaire. Depuis que j'ai refusé, je m'attends au pire. Je ne sais pas s'ils vont simplement m'écarter ou tenter de me faire taire autrement.</p>
+              <p class="incident-summary">Je veux te protéger. Ne cherche pas à intervenir, ne contacte personne chez Vespera et ne viens pas me chercher si je disparais. Je ne veux pas que tu sois entraînée dans ce projet ni que tu sois en danger à cause de moi.</p>
+              <p class="incident-summary">Mais je ne veux pas t'oublier. Je veux garder le souvenir de nous, même s'ils essaient de me l'enlever. Si tu as trouvé cette transmission, ce n'est pas une demande de me sauver. C'est ma façon de te prévenir et de te dire que je n'ai pas choisi de t'effacer de ma vie.</p>
+              <p class="dossier-footnote">Transmission préparée avant la session initiale // fin du fichier.</p>
+            </article>
+          </section>
+
+          <section class="app-panel simple-panel search-panel" id="searchPanel" aria-labelledby="searchTitle" hidden>
+            <p class="eyebrow">Index local // NEXUS</p>
+            <h2 id="searchTitle">Recherche</h2>
+            <p class="panel-copy">Consultez les archives disponibles sur ce terminal. Aucun accès à Internet.</p>
+            <form class="search-form" id="searchForm" role="search">
+              <label for="searchInput">Rechercher dans l'index</label>
+              <div class="search-controls">
+                <input class="search-input" id="searchInput" type="search" placeholder="Tape ta recherche" autocomplete="off" required>
+                <button class="search-submit" type="submit">Rechercher</button>
+              </div>
+            </form>
+            <p class="search-feedback" id="searchFeedback" role="status" aria-live="polite"></p>
+            <div class="search-results" id="searchResults" hidden>
+              <p class="app-section-label" id="searchResultCount">Résultats // 02</p>
+              <button class="search-result" id="vesperaResult" type="button">
+                <strong>Vespera Dynamics</strong>
+                <span>Fiche corporative — biotechnologies neuronales et conservation de données.</span>
+              </button>
+              <button class="search-result" id="interviewResult" type="button">
+                <strong>« Protéger votre histoire »</strong>
+                <span>Entretien avec la fondatrice — mission et solutions mémorielles de Vespera Dynamics.</span>
+              </button>
+              <button class="search-result" id="founderResult" type="button" hidden>
+                <strong>Dr Maëlle Varenne</strong>
+                <span>Parcours professionnel — neurosciences, fondation de Vespera Dynamics et engagement caritatif.</span>
+              </button>
+              <button class="search-result" id="missingPersonsResult" type="button" hidden>
+                <strong>Signalements après les essais</strong>
+                <span>Des familles disent avoir perdu la trace de proches volontaires — Vespera conteste ces signalements.</span>
+              </button>
+              <button class="search-result" id="subject84Result" type="button" hidden>
+                <strong>Dossier participant — Sujet 84</strong>
+                <span>Extrait d'archive interne — statut de sortie et données mémorielles.</span>
+              </button>
+            </div>
+            <article class="company-dossier" id="companyDossier" aria-labelledby="companyName" hidden>
+              <button class="dossier-back" id="dossierBack" type="button">← Retour aux résultats</button>
+              <p class="dossier-kicker">Fiche corporative // Archive publique</p>
+              <h3 id="companyName" tabindex="-1">Vespera Dynamics</h3>
+              <p class="dossier-summary">Groupe spécialisé dans les interfaces neuronales et les technologies de conservation de données mémorielles. La société présente ses recherches comme des outils destinés aux soins et à la préservation des souvenirs.</p>
+              <dl class="dossier-facts">
+                <div><dt>Fondation</dt><dd>18 avril 2041</dd></div>
+                <div><dt>Siège</dt><dd>District d'Aster, Néo-Montréal</dd></div>
+                <div><dt>Fondatrice</dt><dd>Dr Maëlle Varenne</dd></div>
+                <div><dt>Activités</dt><dd>Interfaces neuronales, archivage mémoriel et infrastructures de données sensibles.</dd></div>
+                <div><dt>Statut</dt><dd>Entreprise privée — accès aux laboratoires restreint.</dd></div>
+              </dl>
+              <p class="dossier-footnote">Note d'archive : aucune référence au prototype Mnémosyne dans le catalogue public.</p>
+            </article>
+            <article class="company-interview" id="companyInterview" aria-labelledby="interviewTitle" hidden>
+              <button class="dossier-back" id="interviewBack" type="button">← Retour aux résultats</button>
+              <p class="dossier-kicker">Entretien // Archive presse</p>
+              <h3 id="interviewTitle" tabindex="-1">« Protéger votre histoire »</h3>
+              <p class="interview-attribution">Dr Maëlle Varenne, fondatrice de Vespera Dynamics</p>
+              <p class="interview-question">Quelle est la mission de Vespera Dynamics ?</p>
+              <blockquote class="interview-quote">« Chez Vespera Dynamics, nous nous engageons à protéger ce que vous avez de plus précieux : votre histoire. Grâce à nos interfaces neuronales de pointe, nous développons des solutions de conservation mémorielle sécurisées et bienveillantes, afin d'aider les personnes atteintes de troubles cognitifs à préserver et à chérir les souvenirs qui leur sont les plus chers, en toute sérénité. »</blockquote>
+              <p class="dossier-summary">L'entreprise affirme que ses technologies sont conçues pour accompagner les patients et leurs proches, dans un cadre confidentiel et sous le contrôle de chaque personne.</p>
+              <p class="dossier-footnote">Extrait d'un entretien publié dans <em>Regards sur demain</em>, édition 2048.</p>
+            </article>
+            <article class="founder-profile" id="founderProfile" aria-labelledby="founderName" hidden>
+              <button class="dossier-back" id="founderBack" type="button">← Retour aux résultats</button>
+              <p class="dossier-kicker">Parcours professionnel // Archive publique</p>
+              <h3 id="founderName" tabindex="-1">Dr Maëlle Varenne</h3>
+              <p class="dossier-summary">Neuroscientifique, entrepreneuse et mécène, reconnue pour ses recherches sur la mémoire et pour la création de Vespera Dynamics.</p>
+              <ol class="founder-timeline">
+                <li>
+                  <time datetime="2032/2036">2032 — 2036</time>
+                  <div><strong>Doctorat en neurosciences</strong><p>Université de Néo-Montréal. Travaux consacrés à la mémoire autobiographique et aux interfaces neuronales.</p></div>
+                </li>
+                <li class="timeline-gap">
+                  <time datetime="2037/2041">2037 — 2041</time>
+                  <div><strong>Parcours professionnel non détaillé</strong><p>Aucun employeur ni projet de recherche n'est répertorié dans la version publique de son dossier.</p></div>
+                </li>
+                <li>
+                  <time datetime="2041">2041</time>
+                  <div><strong>Fondation de Vespera Dynamics</strong><p>Création de l'entreprise, dont elle devient la directrice scientifique.</p></div>
+                </li>
+                <li>
+                  <time datetime="2044">2044</time>
+                  <div><strong>Programme caritatif « Mémoire Partagée »</strong><p>Financement d'un accompagnement gratuit pour des personnes atteintes de troubles cognitifs et leurs proches.</p></div>
+                </li>
+                <li>
+                  <time datetime="2047">2047</time>
+                  <div><strong>Prix Aster de l'innovation thérapeutique</strong><p>Distinction attribuée pour ses contributions aux technologies de soutien mémoriel.</p></div>
+                </li>
+              </ol>
+              <p class="dossier-footnote">Note de l'archive : les références couvrant 2037–2041 sont absentes du registre consulté.</p>
+            </article>
+            <article class="missing-persons-report" id="missingPersonsReport" aria-labelledby="missingPersonsTitle" hidden>
+              <button class="dossier-back" id="missingPersonsBack" type="button">← Retour aux résultats</button>
+              <p class="dossier-kicker">Dossier d'information // Archives de presse</p>
+              <h3 id="missingPersonsTitle" tabindex="-1">Des volontaires introuvables après les essais</h3>
+              <p class="dossier-summary">Plusieurs familles affirment avoir perdu la trace de proches qui s'étaient portés volontaires pour participer aux essais de Vespera Dynamics.</p>
+              <section class="report-section" aria-labelledby="familyReportsTitle">
+                <h4 id="familyReportsTitle">Ce que rapportent les familles</h4>
+                <p>Selon leurs témoignages, elles n'ont plus reçu de nouvelles après l'admission de leurs proches aux protocoles de test. Certaines disent n'avoir obtenu ni confirmation de leur départ, ni moyen de reprendre contact avec eux.</p>
+              </section>
+              <section class="report-section" aria-labelledby="vesperaResponseTitle">
+                <h4 id="vesperaResponseTitle">Réponse officielle de Vespera Dynamics</h4>
+                <blockquote class="report-statement">« Les participants concernés ont mis fin unilatéralement à leur contrat et quitté le programme conformément aux conditions qu'ils avaient signées. Vespera Dynamics conteste toute irrégularité. »</blockquote>
+              </section>
+              <p class="dossier-footnote">État du dossier : les témoignages et la réponse de l'entreprise divergent. Le registre de clôture des essais 2046–2048 n'est pas disponible dans les archives publiques.</p>
+            </article>
+            <article class="subject84-profile" id="subject84Profile" aria-labelledby="subject84Title" hidden>
+              <button class="dossier-back" id="subject84Back" type="button">← Retour aux résultats</button>
+              <p class="dossier-kicker">Index participant // consultation restreinte</p>
+              <h3 id="subject84Title" tabindex="-1">Sujet 84 — identité masquée</h3>
+              <p class="dossier-summary">Extrait du dossier d'un volontaire enregistré dans le protocole Synapse. Les informations civiles ne figurent pas dans cette copie.</p>
+              <dl class="dossier-facts">
+                <div><dt>Participation</dt><dd>Volontaire — consentement initial enregistré.</dd></div>
+                <div><dt>Résiliation</dt><dd>16 octobre 2048, 02:11 — initiée par le sujet. Signature non consultable.</dd></div>
+                <div><dt>Sortie du site</dt><dd>16 octobre 2048, 02:12 — sortie déclarée, non vérifiée. Aucun relevé de passage associé.</dd></div>
+                <div><dt>Incident 404</dt><dd>16 octobre 2048, 02:14 — le Sujet 84 est lié à la session concernée.</dd></div>
+                <div><dt>Archive mémorielle</dt><dd>MNÉMOSYNE-84 — active. Copie transférée exceptionnellement vers le Nœud 7 à 02:16. Opérateur et motif non renseignés.</dd></div>
+                <div><dt>Contact familial</dt><dd>Aucune confirmation de reprise de contact enregistrée après la sortie déclarée.</dd></div>
+              </dl>
+              <button class="puzzle-submit" id="openClinicalFollowup" type="button">Consulter le suivi clinique</button>
+              <p class="dossier-footnote">Le dossier atteste le transfert d'une copie vers un stockage interne restreint, pas le déplacement du participant. L'identité de l'opérateur et le motif du transfert sont absents de cet extrait.</p>
+            </article>
+            <article class="clinical-followup" id="clinicalFollowup" aria-labelledby="clinicalFollowupTitle" hidden>
+              <button class="dossier-back" id="clinicalFollowupBack" type="button">← Retour au dossier Sujet 84</button>
+              <p class="dossier-kicker">Annexe médicale // accès restreint</p>
+              <h3 id="clinicalFollowupTitle" tabindex="-1">Suivi clinique — Sujet 84</h3>
+              <p class="dossier-summary">Extraits du journal de surveillance précédant l'Incident 404. Notes consignées par l'équipe de suivi ; aucune conclusion sur l'origine des symptômes n'est jointe.</p>
+              <ol class="clinical-timeline">
+                <li>
+                  <time datetime="2048-10-13T18:20">13 octobre 2048<br>18:20</time>
+                  <div><strong>Céphalées intermittentes</strong><p>Le sujet signale une pression derrière les yeux après la séance. Intensité décrite comme faible. Repos conseillé ; séance suivante maintenue.</p></div>
+                </li>
+                <li>
+                  <time datetime="2048-10-15T21:40">15 octobre 2048<br>21:40</time>
+                  <div><strong>Fatigue et repères spatiaux</strong><p>Fatigue persistante. Le sujet hésite sur le trajet entre la salle de repos et l'unité d'observation, pourtant parcouru plus tôt dans la journée. Il attribue cela au manque de sommeil. Il a été observé des troubles sur les noms et visages du personnel.</p></div>
+                </li>
+                <li class="clinical-alert">
+                  <time datetime="2048-10-16T01:42">16 octobre 2048<br>01:42</time>
+                  <div><strong>Signalement renouvelé</strong><p>Céphalée plus marquée, fatigue et difficulté à situer l'heure. Le sujet demande à deux reprises quand la session de synchronisation doit commencer. Évaluation médicale complète : non versée à cette copie.</p></div>
+                </li>
+                <li class="clinical-alert">
+                  <time datetime="2048-10-16T02:03">16 octobre 2048<br>02:03</time>
+                  <div><strong>Désorientation transitoire</strong><p>Le sujet ne reconnaît pas immédiatement le couloir de sortie et demande où se trouve l'accueil. Prise en charge indiquée comme « en attente » ; aucune heure de clôture n'est renseignée.</p></div>
+                </li>
+              </ol>
+              <p class="dossier-footnote">Dernière entrée : 8 minutes avant la résiliation enregistrée. Le dossier ne précise pas qui a rédigé cette note ni pourquoi la prise en charge est restée en attente.</p>
+            </article>
+          </section>
+
+          <section class="app-panel simple-panel" id="notesPanel" aria-labelledby="notesTitle" hidden>
+            <p class="eyebrow">Espace personnel</p>
+            <h2 id="notesTitle">Notes</h2>
+            <p class="panel-copy">Un endroit pour garder vos observations pendant l'exploration.</p>
+            <label class="app-section-label" for="notesArea">Brouillon local</label>
+            <textarea class="notes-area" id="notesArea" placeholder="Vos notes restent dans cette page."></textarea>
+            <p class="notes-status" id="notesStatus" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="app-panel simple-panel" id="systemPanel" aria-labelledby="systemTitle" hidden>
+            <p class="eyebrow">Diagnostic // 07</p>
+            <h2 id="systemTitle">État du système</h2>
+            <p class="panel-copy">La session est active. Certains éléments attendent encore d'être découverts.</p>
+            <div class="system-grid">
+              <span>Connexion</span><span>ÉTABLIE</span>
+              <span>Messagerie</span><span id="systemMailStatus">01 MESSAGE</span>
+              <span>Archives</span><span>RESTREINTES</span>
+              <span>Canal inconnu</span><span>EN VEILLE</span>
+              <span id="systemNodeLabel" hidden>Routage</span><span id="systemNodeStatus" hidden>NON INDEXÉ</span>
+            </div>
+            <section class="node7-console" id="node7Console" aria-labelledby="node7Title" hidden>
+              <p class="dossier-kicker">Trace de routage // stockage interne</p>
+              <h3 id="node7Title" tabindex="-1">Nœud 7 — accès restreint</h3>
+              <p class="panel-copy">Unité de stockage isolée, destinée aux copies mémorielles transférées hors des archives consultables. Une copie de MNÉMOSYNE-84 a été dirigée ici ; l'accès exige la vérification de son horodatage de réplication.</p>
+              <button class="puzzle-submit" id="node7Inspect" type="button">Établir une session de lecture</button>
+              <form class="node7-form" id="node7Puzzle" hidden>
+                <label for="node7Timestamp">Horodatage de la dernière réplication // format HHMM</label>
+                <input class="node7-input" id="node7Timestamp" name="timestamp" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required aria-describedby="node7Feedback">
+                <button class="puzzle-submit" type="submit">Vérifier la route</button>
+                <p class="node7-feedback" id="node7Feedback" role="status" aria-live="polite"></p>
+              </form>
+              <div id="node7Recovery" hidden>
+                <p class="node7-feedback success" id="node7RecoveryStatus" role="status" aria-live="polite">Route validée. Un fragment est disponible, mais n'a pas encore été copié sur ce terminal.</p>
+                <div class="node7-exchange">
+                  <h4>Journal associé // canal de supervision</h4>
+                  <p class="exchange-meta">16 octobre 2048 // capture partielle liée au transfert de MNÉMOSYNE-84</p>
+                  <button class="puzzle-submit" id="restoreExchange" type="button">Reconstituer l'échange partiel</button>
+                  <section id="node7Exchange" aria-labelledby="exchangeTitle" hidden>
+                    <h4 id="exchangeTitle" tabindex="-1">Capture de messagerie</h4>
+                    <p class="exchange-meta">Canal interne chez Vespera Dynamics</p>
+                    <ol class="exchange-messages" id="exchangeMessages" role="log" aria-live="polite" aria-label="Échanges restaurés">
+                      <li class="exchange-message doctor" data-author="Dr Maëlle Varenne" hidden>
+                        <p class="exchange-speaker"><span>Dr Maëlle Varenne</span><time>02:19:26</time></p>
+                        <p>Le transfert est terminé. Mnémosyne confirme l'effacement total.</p>
+                      </li>
+                      <li class="exchange-message authority" data-author="Autorité exécutive" hidden>
+                        <p class="exchange-speaker"><span>Autorité exécutive // identité masquée</span><time>02:20:12</time></p>
+                        <p>Aucune rémanence ?</p>
+                      </li>
+                      <li class="exchange-message doctor" data-author="Dr Maëlle Varenne" hidden>
+                        <p class="exchange-speaker"><span>Dr Maëlle Varenne</span><time>02:20:26</time></p>
+                        <p>Trois tests de rappel. Aucun souvenir autobiographique restituable. Le Sujet 84 ne reconnaît ni son nom ni son visage.</p>
+                      </li>
+                      <li class="exchange-message authority" data-author="Autorité exécutive" hidden>
+                        <p class="exchange-speaker"><span>Autorité exécutive // identité masquée</span><time>02:20:41</time></p>
+                        <p>Alors le protocole a réussi. Toutes mes félicitations Dr Varenne.</p>
+                      </li>
+                      <li class="exchange-message doctor" data-author="Dr Maëlle Varenne" hidden>
+                        <p class="exchange-speaker"><span>Dr Maëlle Varenne</span><time>02:20:55</time></p>
+                        <p>Ce n'est pas une réussite clinique.</p>
+                      </li>
+                      <li class="exchange-message authority" data-author="Autorité exécutive" hidden>
+                        <p class="exchange-speaker"><span>Autorité exécutive // identité masquée</span><time>02:21:08</time></p>
+                        <p>C'est une réussite nous concernant.</p>
+                      </li>
+                      <li class="exchange-message doctor" data-author="Dr Maëlle Varenne" hidden>
+                        <p class="exchange-speaker"><span>Dr Maëlle Varenne</span><time>02:21:29</time></p>
+                        <p>La copie devait être purgée après vérification.</p>
+                      </li>
+                      <li class="exchange-message authority" data-author="Autorité exécutive" hidden>
+                        <p class="exchange-speaker"><span>Autorité exécutive // identité masquée</span><time>02:21:42</time></p>
+                        <p>Elle est au Nœud 7. Hors de l'index courant. Si mes souvenirs sont exactes, personne d'autre ne peut la retrouver.</p>
+                      </li>
+                      <li class="exchange-message doctor" data-author="Dr Maëlle Varenne" hidden>
+                        <p class="exchange-speaker"><span>Dr Maëlle Varenne</span><time>02:21:57</time></p>
+                        <p>Et le sujet, qu'allez-vous faire ?</p>
+                      </li>
+                      <li class="exchange-message authority" data-author="Autorité exécutive" hidden>
+                        <p class="exchange-speaker"><span>Autorité exécutive // identité masquée</span><time>02:22:10</time></p>
+                        <p>La sortie est enregistrée. Vous n'avez pas à vous en soucier de cela, vous avez accompli votre mission.</p>
+                      </li>
+                      <li class="exchange-message doctor" data-author="Dr Maëlle Varenne" hidden>
+                        <p class="exchange-speaker"><span>Dr Maëlle Varenne</span><time>02:22:23</time></p>
+                        <p>Concernant la famille du sujet ?</p>
+                      </li>
+                      <li class="exchange-message authority" data-author="Autorité exécutive" hidden>
+                        <p class="exchange-speaker"><span>Autorité exécutive // identité masquée</span><time>02:22:36</time></p>
+                        <p>Le rapport indiquera une résiliation volontaire. C'est tout ce que vous avez à consigner et que vous rendrez public</p>
+                      </li>
+                      <li class="exchange-message doctor" data-author="Dr Maëlle Varenne" hidden>
+                        <p class="exchange-speaker"><span>Dr Maëlle Varenne</span><time>02:22:49</time></p>
+                        <p>Bien.</p>
+                      </li>
+                    </ol>
+                    <p class="exchange-typing" id="exchangeTyping" role="status" aria-live="polite" hidden></p>
+                    <p class="exchange-end" id="exchangeEnd" hidden>[Capture interrompue // segments suivants absents]</p>
+                  </section>
+                </div>
+                <button class="puzzle-submit" id="node7Retrieve" type="button">Récupérer le fragment M-84</button>
+              </div>
+            </section>
+          </section>
+        </div>
+      </section>
+
+      <footer class="taskbar">
+        <button class="taskbar-start" id="desktopHome" type="button" aria-label="Retour au bureau">NEXUS</button>
+        <button class="profile-switch" id="profileSwitch" type="button" aria-label="Retour au choix des identifiants">Profils</button>
+        <span class="taskbar-label">Environnement sécurisé</span>
+        <time class="taskbar-clock" id="desktopClock"></time>
+      </footer>
+      <div class="incoming-mail-notice" id="incomingMailNotice" role="status" aria-live="polite" hidden>
+        <span class="notice-label">Nouveau message // Messagerie</span>
+        <button class="notice-open" id="openIncomingMail" type="button">Léa Moreau — Urgent : Projet Mnémosyne</button>
+        <button class="notice-dismiss" id="dismissMailNotice" type="button" aria-label="Fermer la notification">×</button>
+      </div>
+    </section>
+
+    <iframe class="varenne-frame" id="varenneFrame" title="Bureau privé de la docteure Varenne" hidden></iframe>
+    <button class="skip-button" id="skipButton" type="button" hidden>Passer l'introduction</button>
+    <button class="replay-button" id="replayButton" type="button" hidden>↺ Revoir l'intro</button>
+    <section class="ending-screen" id="endingScreen" role="dialog" aria-modal="true" aria-labelledby="endingMessage" aria-live="assertive" tabindex="-1" hidden>
+      <div class="ending-content">
+        <h1 class="ending-message" id="endingMessage">Je me souviens</h1>
+        <p class="ending-reveal" id="endingReveal" hidden>Vous n'avez jamais été mandaté.<br>Tu as été mandaté pour te souvenir.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const intro = document.querySelector("#intro");
+    const welcome = document.querySelector("#welcome");
+    const authScreen = document.querySelector("#authScreen");
+    const authForm = document.querySelector("#authForm");
+    const firstName = document.querySelector("#firstName");
+    const authMessage = document.querySelector("#authMessage");
+    const authSubmit = document.querySelector("#authSubmit");
+    const skipButton = document.querySelector("#skipButton");
+    const replayButton = document.querySelector("#replayButton");
+    const enterButton = document.querySelector("#enterButton");
+    const desktop = document.querySelector("#desktop");
+    const varenneFrame = document.querySelector("#varenneFrame");
+    const appWindow = document.querySelector("#appWindow");
+    const windowTitle = document.querySelector("#windowTitle");
+    const closeWindowButton = document.querySelector("#closeWindow");
+    const desktopHome = document.querySelector("#desktopHome");
+    const profileSwitch = document.querySelector("#profileSwitch");
+    const desktopClock = document.querySelector("#desktopClock");
+    const inboxCount = document.querySelector("#inboxCount");
+    const firstMessage = document.querySelector("#firstMessage");
+    const colleagueMessage = document.querySelector("#colleagueMessage");
+    const incidentMessage = document.querySelector("#incidentMessage");
+    const partnerMessage = document.querySelector("#partnerMessage");
+    const leaChannelMessage = document.querySelector("#leaChannelMessage");
+    const partnerActions = document.querySelector("#partnerActions");
+    const partnerChoices = document.querySelector("#partnerChoices");
+    const partnerYes = document.querySelector("#partnerYes");
+    const partnerNo = document.querySelector("#partnerNo");
+    const partnerNoFeedback = document.querySelector("#partnerNoFeedback");
+    const partnerDateForm = document.querySelector("#partnerDateForm");
+    const partnerDinnerDate = document.querySelector("#partnerDinnerDate");
+    const partnerResponseStatus = document.querySelector("#partnerResponseStatus");
+    const partnerEditDate = document.querySelector("#partnerEditDate");
+    const partnerDateMemoryNote = document.querySelector("#partnerDateMemoryNote");
+    const leaConversation = document.querySelector("#leaConversation");
+    const leaSubjectMessage = document.querySelector("#leaSubjectMessage");
+    const leaSubjectReply = document.querySelector("#leaSubjectReply");
+    const leaProjectMessage = document.querySelector("#leaProjectMessage");
+    const leaProjectReply = document.querySelector("#leaProjectReply");
+    const leaIntentQuestion = document.querySelector("#leaIntentQuestion");
+    const leaIntentReply = document.querySelector("#leaIntentReply");
+    const leaTyping = document.querySelector("#leaTyping");
+    const sendSubjectUpdate = document.querySelector("#sendSubjectUpdate");
+    const sendProjectUpdate = document.querySelector("#sendProjectUpdate");
+    const sendIntentQuestion = document.querySelector("#sendIntentQuestion");
+    const leaConversationEnd = document.querySelector("#leaConversationEnd");
+    const mailMeta = document.querySelector("#mailMeta");
+    const mailSubject = document.querySelector("#mailSubject");
+    const mailBody = document.querySelector("#mailBody");
+    const mailAttachment = document.querySelector("#mailAttachment");
+    const mailSignature = document.querySelector("#mailSignature");
+    const systemMailStatus = document.querySelector("#systemMailStatus");
+    const incomingMailNotice = document.querySelector("#incomingMailNotice");
+    const openIncomingMail = document.querySelector("#openIncomingMail");
+    const dismissMailNotice = document.querySelector("#dismissMailNotice");
+    const desktopMailBadge = document.querySelector(".icon-badge");
+    const fileArchiveKicker = document.querySelector("#fileArchiveKicker");
+    const fileList = document.querySelector("#fileList");
+    const transmissionFile = document.querySelector("#transmissionFile");
+    const transmissionFileStatus = document.querySelector("#transmissionFileStatus");
+    const transmissionReport = document.querySelector("#transmissionReport");
+    const transmissionTitle = document.querySelector("#transmissionTitle");
+    const transmissionBack = document.querySelector("#transmissionBack");
+    const endingScreen = document.querySelector("#endingScreen");
+    const endingReveal = document.querySelector("#endingReveal");
+    const incidentFile = document.querySelector("#incidentFile");
+    const fragmentFile = document.querySelector("#fragmentFile");
+    const fragmentReport = document.querySelector("#fragmentReport");
+    const fragmentTitle = document.querySelector("#fragmentTitle");
+    const fragmentBack = document.querySelector("#fragmentBack");
+    const incidentPuzzle = document.querySelector("#incidentPuzzle");
+    const incidentPuzzleForm = document.querySelector("#incidentPuzzleForm");
+    const puzzleTitle = document.querySelector("#puzzleTitle");
+    const puzzleFeedback = document.querySelector("#puzzleFeedback");
+    const puzzleBack = document.querySelector("#puzzleBack");
+    const incidentReport = document.querySelector("#incidentReport");
+    const incidentTitle = document.querySelector("#incidentTitle");
+    const incidentBack = document.querySelector("#incidentBack");
+    const incidentValue = document.querySelector("#incidentValue");
+    const foundationValue = document.querySelector("#foundationValue");
+    const doctorateValue = document.querySelector("#doctorateValue");
+    const asterValue = document.querySelector("#asterValue");
+    const searchForm = document.querySelector("#searchForm");
+    const searchInput = document.querySelector("#searchInput");
+    const searchFeedback = document.querySelector("#searchFeedback");
+    const searchResults = document.querySelector("#searchResults");
+    const searchResultCount = document.querySelector("#searchResultCount");
+    const vesperaResult = document.querySelector("#vesperaResult");
+    const interviewResult = document.querySelector("#interviewResult");
+    const founderResult = document.querySelector("#founderResult");
+    const companyDossier = document.querySelector("#companyDossier");
+    const companyName = document.querySelector("#companyName");
+    const dossierBack = document.querySelector("#dossierBack");
+    const companyInterview = document.querySelector("#companyInterview");
+    const interviewTitle = document.querySelector("#interviewTitle");
+    const interviewBack = document.querySelector("#interviewBack");
+    const founderProfile = document.querySelector("#founderProfile");
+    const founderName = document.querySelector("#founderName");
+    const founderBack = document.querySelector("#founderBack");
+    const missingPersonsResult = document.querySelector("#missingPersonsResult");
+    const missingPersonsReport = document.querySelector("#missingPersonsReport");
+    const missingPersonsTitle = document.querySelector("#missingPersonsTitle");
+    const missingPersonsBack = document.querySelector("#missingPersonsBack");
+    const subject84Result = document.querySelector("#subject84Result");
+    const subject84Profile = document.querySelector("#subject84Profile");
+    const subject84Title = document.querySelector("#subject84Title");
+    const subject84Back = document.querySelector("#subject84Back");
+    const openClinicalFollowup = document.querySelector("#openClinicalFollowup");
+    const clinicalFollowup = document.querySelector("#clinicalFollowup");
+    const clinicalFollowupTitle = document.querySelector("#clinicalFollowupTitle");
+    const clinicalFollowupBack = document.querySelector("#clinicalFollowupBack");
+    const systemNodeLabel = document.querySelector("#systemNodeLabel");
+    const systemNodeStatus = document.querySelector("#systemNodeStatus");
+    const node7Console = document.querySelector("#node7Console");
+    const node7Inspect = document.querySelector("#node7Inspect");
+    const node7Puzzle = document.querySelector("#node7Puzzle");
+    const node7Timestamp = document.querySelector("#node7Timestamp");
+    const node7Feedback = document.querySelector("#node7Feedback");
+    const node7Recovery = document.querySelector("#node7Recovery");
+    const node7Retrieve = document.querySelector("#node7Retrieve");
+    const node7RecoveryStatus = document.querySelector("#node7RecoveryStatus");
+    const restoreExchange = document.querySelector("#restoreExchange");
+    const node7Exchange = document.querySelector("#node7Exchange");
+    const exchangeTitle = document.querySelector("#exchangeTitle");
+    const exchangeMessages = Array.from(document.querySelectorAll("#exchangeMessages .exchange-message"));
+    const exchangeTyping = document.querySelector("#exchangeTyping");
+    const exchangeEnd = document.querySelector("#exchangeEnd");
+    const appPanels = {
+      mail: document.querySelector("#mailPanel"),
+      search: document.querySelector("#searchPanel"),
+      files: document.querySelector("#filesPanel"),
+      notes: document.querySelector("#notesPanel"),
+      system: document.querySelector("#systemPanel")
+    };
+    const appTitles = {
+      mail: "Messagerie",
+      search: "Recherche interne",
+      files: "Fichiers",
+      notes: "Notes",
+      system: "État du système"
+    };
+    const notesArea = document.querySelector("#notesArea");
+    const notesStatus = document.querySelector("#notesStatus");
+    let activeAppButton = null;
+    let kenanSessionStarted = false;
+    let varenneLoaded = false;
+    let secondMessageArrived = false;
+    let colleagueMessageRead = false;
+    let thirdMessageArrived = false;
+    let incidentMessageRead = false;
+    let partnerMessageArrived = false;
+    let partnerMessageRead = false;
+    let leaChannelAvailable = false;
+    let leaChannelRead = false;
+    let partnerAccepted = false;
+    let partnerDeclined = false;
+    let partnerDateConfirmed = false;
+    let partnerDateEditing = false;
+    let fragmentRead = false;
+    let transmissionUnlocked = false;
+    let endingStarted = false;
+    let leaConversationStage = 0;
+    let incidentReportUnlocked = false;
+    let incidentReportRead = false;
+    let node7Unlocked = false;
+    let fragmentRetrieved = false;
+    let exchangeStarted = false;
+    let notificationMessage = null;
+    let missingReportCompleted = false;
+    let incidentMessageScheduled = false;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const NotificationAudioContext = window.AudioContext || window.webkitAudioContext;
+    let notificationAudioContext = null;
+    let timers = [];
+
+    function initializeNotificationAudio() {
+      if (!NotificationAudioContext || notificationAudioContext) return;
+      notificationAudioContext = new NotificationAudioContext();
+      if (notificationAudioContext.state === "suspended") {
+        notificationAudioContext.resume().catch((error) => {
+          console.warn("Le son des notifications n'a pas pu être activé.", error);
+        });
+      }
+    }
+
+    function playNotificationSound() {
+      if (!notificationAudioContext || notificationAudioContext.state !== "running") return;
+
+      const startTime = notificationAudioContext.currentTime;
+      [740, 980].forEach((frequency, index) => {
+        const noteStart = startTime + index * 0.13;
+        const oscillator = notificationAudioContext.createOscillator();
+        const volume = notificationAudioContext.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, noteStart);
+        volume.gain.setValueAtTime(0.0001, noteStart);
+        volume.gain.exponentialRampToValueAtTime(0.035, noteStart + 0.015);
+        volume.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.14);
+        oscillator.connect(volume);
+        volume.connect(notificationAudioContext.destination);
+        oscillator.start(noteStart);
+        oscillator.stop(noteStart + 0.15);
+      });
+    }
+
+    function clearTimers() {
+      timers.forEach(window.clearTimeout);
+      timers = [];
+    }
+
+    function showWelcome() {
+      clearTimers();
+      intro.classList.remove("visible");
+      intro.classList.add("leaving");
+      intro.setAttribute("aria-hidden", "true");
+      welcome.classList.add("visible");
+      welcome.setAttribute("aria-hidden", "false");
+      skipButton.hidden = true;
+      replayButton.hidden = false;
+      enterButton.focus({ preventScroll: true });
+    }
+
+    function playIntro() {
+      clearTimers();
+      welcome.classList.remove("visible");
+      welcome.setAttribute("aria-hidden", "true");
+      intro.classList.remove("leaving", "visible");
+      intro.setAttribute("aria-hidden", "false");
+      skipButton.hidden = false;
+      replayButton.hidden = true;
+      if (reduceMotion.matches) {
+        showWelcome();
+        return;
+      }
+      timers.push(window.setTimeout(() => intro.classList.add("visible"), 250));
+      timers.push(window.setTimeout(() => {
+        intro.classList.add("leaving");
+        timers.push(window.setTimeout(showWelcome, 950));
+      }, 2850));
+    }
+
+    function openApp(appName, button) {
+      const panel = appPanels[appName];
+      if (!panel) return;
+      if (appName !== "files" && !appPanels.files.hidden && !transmissionReport.hidden) {
+        finishTransmission();
+        return;
+      }
+
+      Object.keys(appPanels).forEach((name) => {
+        appPanels[name].hidden = name !== appName;
+      });
+      windowTitle.textContent = appTitles[appName];
+      appWindow.hidden = false;
+      activeAppButton = button || document.querySelector(`[data-app="${appName}"]`);
+      if (appName === "search") {
+        searchInput.focus({ preventScroll: true });
+      } else {
+        closeWindowButton.focus({ preventScroll: true });
+      }
+    }
+
+    function showIdentityChooser() {
+      varenneFrame.hidden = true;
+      desktop.hidden = true;
+      desktop.setAttribute("aria-hidden", "true");
+      authScreen.hidden = false;
+      authScreen.classList.remove("leaving");
+      intro.classList.remove("visible", "leaving");
+      intro.setAttribute("aria-hidden", "true");
+      welcome.classList.remove("visible");
+      welcome.setAttribute("aria-hidden", "true");
+      skipButton.hidden = true;
+      replayButton.hidden = true;
+      firstName.disabled = false;
+      authSubmit.disabled = false;
+      firstName.value = "";
+      firstName.removeAttribute("aria-invalid");
+      authForm.classList.remove("error");
+      authMessage.classList.remove("success");
+      authMessage.textContent = "";
+      firstName.focus({ preventScroll: true });
+    }
+
+    function openVarenneDesk() {
+      authScreen.hidden = true;
+      varenneFrame.hidden = false;
+      if (!varenneLoaded) {
+        varenneLoaded = true;
+        varenneFrame.src = new URL("Varenne.html", window.location.href).href;
+      }
+    }
+
+    function finishTransmission() {
+      if (endingStarted) return;
+      endingStarted = true;
+      skipButton.hidden = true;
+      replayButton.hidden = true;
+      incomingMailNotice.hidden = true;
+      desktop.setAttribute("aria-hidden", "true");
+      desktop.setAttribute("inert", "");
+      endingScreen.hidden = false;
+      endingScreen.focus({ preventScroll: true });
+      window.requestAnimationFrame(() => endingScreen.classList.add("visible"));
+
+      const revealEnding = () => {
+        endingReveal.hidden = false;
+        window.requestAnimationFrame(() => endingScreen.classList.add("revealed"));
+      };
+      if (reduceMotion.matches) revealEnding();
+      else window.setTimeout(revealEnding, 1800);
+    }
+
+    function updateClock() {
+      desktopClock.textContent = new Intl.DateTimeFormat("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(new Date());
+    }
+
+    function updateInboxStatus() {
+      const totalMessages = 1 + Number(secondMessageArrived) + Number(thirdMessageArrived) +
+        Number(partnerMessageArrived) + Number(leaChannelAvailable);
+      const unreadMessages = Number(secondMessageArrived && !colleagueMessageRead) +
+        Number(thirdMessageArrived && !incidentMessageRead) +
+        Number(partnerMessageArrived && !partnerMessageRead) +
+        Number(leaChannelAvailable && !leaChannelRead);
+      const unreadLabel = unreadMessages > 0
+        ? ` // ${String(unreadMessages).padStart(2, "0")} nouveau${unreadMessages > 1 ? "x" : ""}`
+        : "";
+
+      inboxCount.textContent = `Boîte de réception // ${String(totalMessages).padStart(2, "0")} messages${unreadLabel}`;
+      systemMailStatus.textContent = `${String(totalMessages).padStart(2, "0")} MESSAGES`;
+      desktopMailBadge.hidden = unreadMessages === 0;
+      colleagueMessage.querySelector(".mail-item-unread").hidden = colleagueMessageRead;
+      incidentMessage.querySelector(".mail-item-unread").hidden = incidentMessageRead;
+      partnerMessage.querySelector(".mail-item-unread").hidden = partnerMessageRead;
+      leaChannelMessage.querySelector(".mail-item-unread").hidden = leaChannelRead;
+    }
+
+    function updateLeaConversation() {
+      leaSubjectMessage.hidden = leaConversationStage < 1;
+      leaSubjectReply.hidden = leaConversationStage < 2;
+      leaProjectMessage.hidden = leaConversationStage < 3;
+      leaProjectReply.hidden = leaConversationStage < 4;
+      leaIntentQuestion.hidden = leaConversationStage < 5;
+      leaIntentReply.hidden = leaConversationStage < 6;
+      sendSubjectUpdate.hidden = leaConversationStage !== 0;
+      sendProjectUpdate.hidden = leaConversationStage !== 2;
+      sendIntentQuestion.hidden = leaConversationStage !== 4;
+      leaConversationEnd.hidden = leaConversationStage < 6;
+    }
+
+    function selectMessage(message, markAsRead) {
+      const messages = {
+        first: {
+          button: firstMessage,
+          meta: "De : Source inconnue\nÀ : Kénan // Transmission privée",
+          subject: "Tu es enfin connecté.",
+          body: "Si tu lis ce message, c'est que le canal est rétabli.\n\nQuelqu'un a laissé une trace dans ce système. Regarde autour de toi. Rien n'est ici par hasard.",
+          signature: "— Fin du message",
+          hasAttachment: false
+        },
+        colleague: {
+          button: colleagueMessage,
+          meta: "De : Léa Moreau // Collègue\nÀ : Kénan // Canal chiffré",
+          subject: "Urgent — Projet Mnémosyne",
+          body: "Kénan,\n\nSi tu lis ceci, c'est que j'ai dû couper le canal. Vespera Dynamics est arrivé à bien du projet Mnémosyne.\n\nLeurs équipes transfèrent les données vers un serveur interne. Tu es le seul à pouvoir encore y accéder. Infiltre leur système, retrouve les données du prototype et récupère-les avant la fin du transfert.\n\nNe fais confiance à aucun message signé Vespera.",
+          signature: "— Léa",
+          hasAttachment: false
+        },
+        incident: {
+          button: incidentMessage,
+          meta: "De : Léa Moreau // Collègue\nÀ : Kénan // Canal chiffré",
+          subject: "Incident 404 — j'ai trouvé le rapport",
+          body: "Kénan,\n\nJ'ai retrouvé un fichier dans l'archive interne : INCIDENT_404. Je te laisse en prendre connaissance.\n\nLe registre de sortie et la notification aux proches sont vides. Je l'ai déposé dans Fichiers, mais tu dois d'abord le décoder. Compare-le au dossier public, je ne suis pas sûre qu'ils aient délivré la bonne version aux familles.",
+          signature: "— Léa // canal interrompu",
+          hasAttachment: true
+        },
+        partner: {
+          button: partnerMessage,
+          meta: "De : Ma compagne // Canal privé\nÀ : Kénan",
+          subject: "Tu rentres ce week-end ?",
+          body: "Coucou Kénan,\n\n Comment avance ton travaille ? Tu ne te sens plus trop fatigué ? Comment vont tes maux de tête ? Pense à te reposer, il est bon de parfois prendre du recul. \n\n Je me demandais si tu rentrais ce week-end. J'aimerais organiser un dîner avec toi, si tu es disponible.\n\nTu me dis ?",
+          signature: "— Je t'embrasse",
+          hasAttachment: false
+        },
+        lea: {
+          button: leaChannelMessage,
+          meta: "De : Kénan // Canal chiffré direct\nÀ : Léa Moreau",
+          subject: "Canal sécurisé — Léa Moreau",
+          body: "Canal direct établi. Les messages prédéfinis restent dans cette session et ne sont envoyés à aucun service externe.",
+          signature: "— Canal chiffré // session locale",
+          hasAttachment: false
+        }
+      };
+      const details = messages[message];
+      if (!details) return;
+
+      mailMeta.textContent = details.meta;
+      mailSubject.textContent = details.subject;
+      mailBody.textContent = details.body;
+      mailAttachment.hidden = !details.hasAttachment;
+      mailSignature.textContent = details.signature;
+      partnerActions.hidden = message !== "partner";
+      leaConversation.hidden = message !== "lea";
+      if (message === "lea") updateLeaConversation();
+      partnerChoices.hidden = partnerAccepted;
+      partnerNoFeedback.hidden = !partnerDeclined || partnerAccepted;
+      partnerDateForm.hidden = !partnerAccepted || (partnerDateConfirmed && !partnerDateEditing);
+      partnerResponseStatus.hidden = !partnerDateConfirmed || partnerDateEditing;
+      partnerEditDate.hidden = !partnerDateConfirmed || partnerDateEditing;
+
+      Object.values(messages).forEach(({ button }) => {
+        button.setAttribute("aria-pressed", String(button === details.button));
+      });
+
+      if (markAsRead) {
+        if (message === "colleague") colleagueMessageRead = true;
+        if (message === "incident") incidentMessageRead = true;
+        if (message === "partner") partnerMessageRead = true;
+        if (message === "lea") leaChannelRead = true;
+        if (notificationMessage === message) incomingMailNotice.hidden = true;
+        updateInboxStatus();
+      }
+    }
+
+    function showIncomingMail(message, subject) {
+      notificationMessage = message;
+      openIncomingMail.textContent = subject;
+      incomingMailNotice.hidden = false;
+      playNotificationSound();
+    }
+
+    function scheduleIncidentMessage() {
+      if (!secondMessageArrived || !missingReportCompleted || thirdMessageArrived || incidentMessageScheduled) return;
+      incidentMessageScheduled = true;
+      window.setTimeout(deliverIncidentMessage, 5000);
+    }
+
+    function deliverColleagueMessage() {
+      if (secondMessageArrived) return;
+      secondMessageArrived = true;
+      colleagueMessage.hidden = false;
+      updateInboxStatus();
+      showIncomingMail("colleague", "Léa Moreau — Urgent : Projet Mnémosyne");
+
+      if (!appWindow.hidden && !appPanels.mail.hidden) {
+        selectMessage("colleague", false);
+      }
+
+      scheduleIncidentMessage();
+    }
+
+    function deliverIncidentMessage() {
+      if (thirdMessageArrived) return;
+      thirdMessageArrived = true;
+      incidentMessage.hidden = false;
+      incidentFile.hidden = false;
+      fileArchiveKicker.textContent = "Archives locales // 02";
+      updateInboxStatus();
+      showIncomingMail("incident", "Léa Moreau — Incident 404 : le rapport");
+
+      if (!appWindow.hidden && !appPanels.mail.hidden) {
+        selectMessage("incident", false);
+      }
+    }
+
+    function deliverPartnerMessage() {
+      if (!fragmentRead || partnerMessageArrived) return;
+      partnerMessageArrived = true;
+      partnerMessage.hidden = false;
+      updateInboxStatus();
+      showIncomingMail("partner", "Ma compagne — Tu rentres ce week-end ?");
+    }
+
+    function openIncidentReport() {
+      openApp("files");
+      fileList.hidden = true;
+      incidentPuzzle.hidden = incidentReportUnlocked;
+      incidentReport.hidden = !incidentReportUnlocked;
+      (incidentReportUnlocked ? incidentTitle : puzzleTitle).focus({ preventScroll: true });
+    }
+
+    profileSwitch.addEventListener("click", showIdentityChooser);
+
+    window.addEventListener("message", (event) => {
+      if (event.source !== varenneFrame.contentWindow || event.data !== "vespera:return-to-identities") return;
+      showIdentityChooser();
+    });
+
+    authForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const submittedName = firstName.value.trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase("fr-FR");
+
+      if (submittedName === "varenne") {
+        firstName.removeAttribute("aria-invalid");
+        firstName.disabled = true;
+        authSubmit.disabled = true;
+        authMessage.classList.add("success");
+        authMessage.textContent = "Identité confirmée. Accès au bureau scientifique.";
+        authScreen.classList.add("leaving");
+        timers.push(window.setTimeout(openVarenneDesk, 650));
+        return;
+      }
+
+      if (submittedName !== "kenan") {
+        firstName.setAttribute("aria-invalid", "true");
+        authMessage.textContent = "Identité inconnue. Accès refusé.";
+        authForm.classList.remove("error");
+        void authForm.offsetWidth;
+        authForm.classList.add("error");
+        firstName.focus();
+        return;
+      }
+
+      firstName.removeAttribute("aria-invalid");
+      firstName.disabled = true;
+      authSubmit.disabled = true;
+      authMessage.classList.add("success");
+      authMessage.textContent = kenanSessionStarted
+        ? "Session Kénan restaurée."
+        : "Identité confirmée. Connexion établie.";
+      authScreen.classList.add("leaving");
+      if (kenanSessionStarted) {
+        timers.push(window.setTimeout(() => {
+          authScreen.hidden = true;
+          desktop.hidden = false;
+          desktop.setAttribute("aria-hidden", "false");
+          updateClock();
+          updateInboxStatus();
+          (activeAppButton || desktopHome).focus({ preventScroll: true });
+        }, 350));
+        return;
+      }
+      intro.setAttribute("aria-hidden", "false");
+      timers.push(window.setTimeout(() => {
+        authScreen.hidden = true;
+        skipButton.hidden = false;
+        playIntro();
+      }, 650));
+    });
+
+    skipButton.addEventListener("click", showWelcome);
+    replayButton.addEventListener("click", playIntro);
+    enterButton.addEventListener("click", () => {
+      initializeNotificationAudio();
+      kenanSessionStarted = true;
+      welcome.classList.remove("visible");
+      welcome.setAttribute("aria-hidden", "true");
+      window.setTimeout(() => {
+        welcome.hidden = true;
+        desktop.hidden = false;
+        desktop.setAttribute("aria-hidden", "false");
+        updateClock();
+        updateInboxStatus();
+        openApp("mail");
+        window.setTimeout(deliverColleagueMessage, 8000);
+      }, 350);
+    });
+
+    document.querySelectorAll(".desktop-icon").forEach((button) => {
+      button.addEventListener("click", () => openApp(button.dataset.app, button));
+    });
+
+    closeWindowButton.addEventListener("click", () => {
+      if (!appPanels.files.hidden && !transmissionReport.hidden) {
+        finishTransmission();
+        return;
+      }
+      appWindow.hidden = true;
+      if (activeAppButton) activeAppButton.focus({ preventScroll: true });
+      deliverPartnerMessage();
+    });
+
+    desktopHome.addEventListener("click", () => {
+      if (!appPanels.files.hidden && !transmissionReport.hidden) {
+        finishTransmission();
+        return;
+      }
+      appWindow.hidden = true;
+      document.querySelector(".desktop-icon").focus({ preventScroll: true });
+      deliverPartnerMessage();
+    });
+
+    firstMessage.addEventListener("click", () => selectMessage("first", true));
+    colleagueMessage.addEventListener("click", () => selectMessage("colleague", true));
+    incidentMessage.addEventListener("click", () => selectMessage("incident", true));
+    partnerMessage.addEventListener("click", () => selectMessage("partner", true));
+
+    openIncomingMail.addEventListener("click", () => {
+      if (!notificationMessage) return;
+      openApp("mail");
+      selectMessage(notificationMessage, true);
+    });
+
+    dismissMailNotice.addEventListener("click", () => {
+      incomingMailNotice.hidden = true;
+    });
+
+    partnerYes.addEventListener("click", () => {
+      partnerAccepted = true;
+      partnerChoices.hidden = true;
+      partnerNoFeedback.hidden = true;
+      partnerDateForm.hidden = false;
+      partnerDinnerDate.focus({ preventScroll: true });
+    });
+
+    partnerNo.addEventListener("click", () => {
+      partnerDeclined = true;
+      partnerNo.disabled = true;
+      partnerNoFeedback.textContent = "Tu n'avais pas le choix. Choisis oui.";
+      partnerNoFeedback.hidden = false;
+    });
+
+    partnerEditDate.addEventListener("click", () => {
+      partnerDateEditing = true;
+      partnerDateForm.hidden = false;
+      partnerResponseStatus.hidden = true;
+      partnerEditDate.hidden = true;
+      partnerDinnerDate.focus({ preventScroll: true });
+    });
+
+    partnerDateForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!partnerDinnerDate.value) {
+        partnerDinnerDate.reportValidity();
+        return;
+      }
+
+      const selectedDate = new Date(`${partnerDinnerDate.value}T12:00:00`);
+      const formattedDate = new Intl.DateTimeFormat("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }).format(selectedDate);
+      const isTransmissionDate = partnerDinnerDate.value === "2025-10-19";
+      const isDateUpdate = partnerDateConfirmed;
+      partnerDateConfirmed = true;
+      partnerDateEditing = false;
+      partnerDateForm.hidden = true;
+      partnerEditDate.hidden = false;
+      leaChannelAvailable = true;
+      leaChannelMessage.hidden = false;
+      partnerResponseStatus.textContent = `${isDateUpdate ? "Date mise à jour" : "Message envoyé"} : « Oui, je rentre ${formattedDate}. » Un canal chiffré avec Léa est disponible dans la messagerie.`;
+      partnerResponseStatus.hidden = false;
+      if (isTransmissionDate) {
+        partnerDateMemoryNote.hidden = false;
+        transmissionUnlocked = true;
+        transmissionFile.disabled = false;
+        transmissionFileStatus.textContent = "TRANSMISSION DÉVERROUILLÉE";
+      }
+      if (transmissionUnlocked) {
+        partnerResponseStatus.textContent += isTransmissionDate
+          ? " Une transmission locale a été déverrouillée."
+          : " Une transmission locale reste déverrouillée.";
+      }
+      updateInboxStatus();
+    });
+
+    leaChannelMessage.addEventListener("click", () => selectMessage("lea", true));
+
+    sendSubjectUpdate.addEventListener("click", () => {
+      if (leaConversationStage !== 0) return;
+      leaConversationStage = 1;
+      updateLeaConversation();
+      leaTyping.textContent = "Léa est en train d'écrire…";
+      leaTyping.hidden = false;
+      const deliverReply = () => {
+        leaTyping.hidden = true;
+        leaSubjectReply.hidden = false;
+        playNotificationSound();
+        leaConversationStage = 2;
+        updateLeaConversation();
+      };
+      if (reduceMotion.matches) deliverReply();
+      else window.setTimeout(deliverReply, 1100);
+    });
+
+    sendProjectUpdate.addEventListener("click", () => {
+      if (leaConversationStage !== 2) return;
+      leaConversationStage = 3;
+      updateLeaConversation();
+      leaTyping.textContent = "Léa est en train d'écrire…";
+      leaTyping.hidden = false;
+      const deliverReply = () => {
+        leaTyping.hidden = true;
+        leaProjectReply.hidden = false;
+        playNotificationSound();
+        leaConversationStage = 4;
+        updateLeaConversation();
+      };
+      if (reduceMotion.matches) deliverReply();
+      else window.setTimeout(deliverReply, 1100);
+    });
+
+    sendIntentQuestion.addEventListener("click", () => {
+      if (leaConversationStage !== 4) return;
+      leaConversationStage = 5;
+      updateLeaConversation();
+      leaTyping.textContent = "Léa est en train d'écrire…";
+      leaTyping.hidden = false;
+      const deliverReply = () => {
+        leaTyping.hidden = true;
+        leaIntentReply.hidden = false;
+        playNotificationSound();
+        leaConversationStage = 6;
+        updateLeaConversation();
+      };
+      if (reduceMotion.matches) deliverReply();
+      else window.setTimeout(deliverReply, 1100);
+    });
+
+    mailAttachment.addEventListener("click", openIncidentReport);
+    incidentFile.addEventListener("click", openIncidentReport);
+    transmissionFile.addEventListener("click", () => {
+      if (!transmissionUnlocked) return;
+      openApp("files");
+      fileList.hidden = true;
+      incidentPuzzle.hidden = true;
+      incidentReport.hidden = true;
+      fragmentReport.hidden = true;
+      transmissionReport.hidden = false;
+      transmissionTitle.focus({ preventScroll: true });
+    });
+    transmissionBack.addEventListener("click", () => {
+      finishTransmission();
+    });
+    fragmentFile.addEventListener("click", () => {
+      openApp("files");
+      fileList.hidden = true;
+      fragmentReport.hidden = false;
+      fragmentRead = true;
+      fragmentTitle.focus({ preventScroll: true });
+    });
+    incidentBack.addEventListener("click", () => {
+      incidentReport.hidden = true;
+      fileList.hidden = false;
+      incidentReportRead = true;
+      incidentFile.focus({ preventScroll: true });
+    });
+    fragmentBack.addEventListener("click", () => {
+      fragmentReport.hidden = true;
+      fileList.hidden = false;
+      fragmentFile.focus({ preventScroll: true });
+    });
+
+    puzzleBack.addEventListener("click", () => {
+      incidentPuzzle.hidden = true;
+      fileList.hidden = false;
+      incidentFile.focus({ preventScroll: true });
+    });
+
+    [
+      [incidentValue, document.querySelector("#incidentOutput")],
+      [foundationValue, document.querySelector("#foundationOutput")],
+      [doctorateValue, document.querySelector("#doctorateOutput")],
+      [asterValue, document.querySelector("#asterOutput")]
+    ].forEach(([slider, output]) => {
+      slider.addEventListener("input", () => {
+        output.value = slider.value;
+        puzzleFeedback.textContent = "";
+      });
+    });
+
+    incidentPuzzleForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const isCorrectSequence =
+        incidentValue.value === "404" &&
+        foundationValue.value === "2041" &&
+        doctorateValue.value === "2036" &&
+        asterValue.value === "2047";
+
+      if (!isCorrectSequence) {
+        puzzleFeedback.classList.remove("success");
+        puzzleFeedback.textContent = "Séquence incorrecte. Vérifiez les archives consultées.";
+        return;
+      }
+
+      incidentReportUnlocked = true;
+      incidentPuzzle.hidden = true;
+      incidentReport.hidden = false;
+      incidentTitle.focus({ preventScroll: true });
+    });
+
+    node7Inspect.addEventListener("click", () => {
+      node7Inspect.hidden = true;
+      node7Puzzle.hidden = false;
+      node7Timestamp.focus({ preventScroll: true });
+    });
+
+    node7Puzzle.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (node7Timestamp.value !== "0216") {
+        node7Feedback.classList.remove("success");
+        node7Feedback.textContent = "Horodatage rejeté. Le nœud attend l'heure de réplication du dossier.";
+        return;
+      }
+
+      node7Unlocked = true;
+      systemNodeStatus.textContent = "CONNECTÉ";
+      node7Puzzle.hidden = true;
+      node7Recovery.hidden = false;
+      node7Retrieve.focus({ preventScroll: true });
+    });
+
+    restoreExchange.addEventListener("click", () => {
+      if (exchangeStarted) return;
+      exchangeStarted = true;
+      restoreExchange.hidden = true;
+      node7Exchange.hidden = false;
+      exchangeTitle.focus({ preventScroll: true });
+
+      if (reduceMotion.matches) {
+        exchangeMessages.forEach((message) => { message.hidden = false; });
+        exchangeEnd.hidden = false;
+        return;
+      }
+
+      function revealExchangeMessage(index) {
+        if (index >= exchangeMessages.length) {
+          exchangeTyping.hidden = true;
+          exchangeEnd.hidden = false;
+          return;
+        }
+
+        const message = exchangeMessages[index];
+        exchangeTyping.textContent = `${message.dataset.author} est en train d'écrire…`;
+        exchangeTyping.hidden = false;
+        window.setTimeout(() => {
+          exchangeTyping.hidden = true;
+          message.hidden = false;
+          window.setTimeout(() => revealExchangeMessage(index + 1), 350);
+        }, 850);
+      }
+
+      revealExchangeMessage(0);
+    });
+
+    node7Retrieve.addEventListener("click", () => {
+      if (!node7Unlocked || fragmentRetrieved) return;
+      fragmentRetrieved = true;
+      fragmentFile.hidden = false;
+      fileArchiveKicker.textContent = "Archives locales // 03";
+      node7Retrieve.hidden = true;
+      node7RecoveryStatus.textContent = "Fragment M-84 copié dans les archives locales.";
+    });
+
+    searchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const query = searchInput.value.trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase("fr-FR");
+      const isUnknownName = query === "mnemosyne";
+      const hasVesperaResult = query.includes("vespera") || query.includes("dynamics");
+      const hasFounderResult = query.includes("maelle") || query.includes("varenne");
+      const hasMissingPersonsResult = hasVesperaResult ||
+        ["dispar", "patient", "essai", "volontaire"].some((term) => query.includes(term));
+      const hasSubject84Result = incidentReportRead && /^(sujet\s*)?84$/.test(query);
+      const resultCount = (hasVesperaResult ? 2 : 0) +
+        (hasFounderResult ? 1 : 0) +
+        (hasMissingPersonsResult ? 1 : 0) +
+        (hasSubject84Result ? 1 : 0);
+
+      companyDossier.hidden = true;
+      companyInterview.hidden = true;
+      founderProfile.hidden = true;
+      missingPersonsReport.hidden = true;
+      subject84Profile.hidden = true;
+      clinicalFollowup.hidden = true;
+      vesperaResult.hidden = !hasVesperaResult;
+      interviewResult.hidden = !hasVesperaResult;
+      founderResult.hidden = !hasFounderResult;
+      missingPersonsResult.hidden = !hasMissingPersonsResult;
+      subject84Result.hidden = !hasSubject84Result;
+      searchResultCount.textContent = `Résultats // ${String(resultCount).padStart(2, "0")}`;
+      searchResults.hidden = resultCount === 0;
+      searchFeedback.textContent = isUnknownName
+        ? "Nom inconnu."
+        : resultCount > 0
+          ? `${resultCount} résultat${resultCount > 1 ? "s" : ""} trouvé${resultCount > 1 ? "s" : ""} dans l'index local.`
+          : "Aucun résultat trouvé dans l'index local.";
+    });
+
+    vesperaResult.addEventListener("click", () => {
+      searchResults.hidden = true;
+      companyDossier.hidden = false;
+      searchFeedback.textContent = "";
+      companyName.focus({ preventScroll: true });
+    });
+
+    interviewResult.addEventListener("click", () => {
+      searchResults.hidden = true;
+      companyInterview.hidden = false;
+      searchFeedback.textContent = "";
+      interviewTitle.focus({ preventScroll: true });
+    });
+
+    founderResult.addEventListener("click", () => {
+      searchResults.hidden = true;
+      founderProfile.hidden = false;
+      searchFeedback.textContent = "";
+      founderName.focus({ preventScroll: true });
+    });
+
+    missingPersonsResult.addEventListener("click", () => {
+      searchResults.hidden = true;
+      missingPersonsReport.hidden = false;
+      searchFeedback.textContent = "";
+      missingPersonsTitle.focus({ preventScroll: true });
+    });
+
+    dossierBack.addEventListener("click", () => {
+      companyDossier.hidden = true;
+      searchResults.hidden = false;
+      vesperaResult.focus({ preventScroll: true });
+    });
+
+    interviewBack.addEventListener("click", () => {
+      companyInterview.hidden = true;
+      searchResults.hidden = false;
+      interviewResult.focus({ preventScroll: true });
+    });
+
+    founderBack.addEventListener("click", () => {
+      founderProfile.hidden = true;
+      searchResults.hidden = false;
+      founderResult.focus({ preventScroll: true });
+    });
+
+    missingPersonsBack.addEventListener("click", () => {
+      missingPersonsReport.hidden = true;
+      searchResults.hidden = false;
+      missingPersonsResult.focus({ preventScroll: true });
+      missingReportCompleted = true;
+      scheduleIncidentMessage();
+    });
+
+    subject84Result.addEventListener("click", () => {
+      searchResults.hidden = true;
+      subject84Profile.hidden = false;
+      clinicalFollowup.hidden = true;
+      searchFeedback.textContent = "";
+      subject84Title.focus({ preventScroll: true });
+    });
+
+    openClinicalFollowup.addEventListener("click", () => {
+      subject84Profile.hidden = true;
+      clinicalFollowup.hidden = false;
+      clinicalFollowupTitle.focus({ preventScroll: true });
+    });
+
+    clinicalFollowupBack.addEventListener("click", () => {
+      clinicalFollowup.hidden = true;
+      subject84Profile.hidden = false;
+      openClinicalFollowup.focus({ preventScroll: true });
+    });
+
+    subject84Back.addEventListener("click", () => {
+      subject84Profile.hidden = true;
+      clinicalFollowup.hidden = true;
+      searchResults.hidden = false;
+      node7Console.hidden = false;
+      systemNodeLabel.hidden = false;
+      systemNodeStatus.hidden = false;
+      systemNodeStatus.textContent = "TRACE DÉTECTÉE";
+      subject84Result.focus({ preventScroll: true });
+    });
+
+    notesArea.addEventListener("input", () => {
+      notesStatus.textContent = "Brouillon conservé pendant cette session.";
+    });
+
+    updateClock();
+    window.setInterval(updateClock, 30000);
+    firstName.focus({ preventScroll: true });
+  </script>
+</body>
+</html>
